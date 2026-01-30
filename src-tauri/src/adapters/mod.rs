@@ -6,6 +6,7 @@ use tokio::process::Command;
 
 pub mod claude;
 pub mod codex;
+pub mod opencode;
 
 /// Parsed output line from CLI
 #[derive(Debug, Clone)]
@@ -68,6 +69,7 @@ pub fn get_adapters() -> Vec<Box<dyn CliAdapter>> {
     vec![
         Box::new(claude::ClaudeCodeAdapter::new()),
         Box::new(codex::CodexAdapter::new()),
+        Box::new(opencode::OpenCodeAdapter::new()),
     ]
 }
 
@@ -102,5 +104,6 @@ pub fn get_adapter(cli_type: CliType) -> Box<dyn CliAdapter> {
     match cli_type {
         CliType::Claude => Box::new(claude::ClaudeCodeAdapter::new()),
         CliType::Codex => Box::new(codex::CodexAdapter::new()),
+        CliType::OpenCode => Box::new(opencode::OpenCodeAdapter::new()),
     }
 }

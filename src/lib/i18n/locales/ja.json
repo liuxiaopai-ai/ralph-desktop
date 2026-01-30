@@ -106,7 +106,7 @@
   },
   "cliMissing": {
     "title": "AI CLI が検出されません",
-    "bodyLine1": "Ralph Desktop には Claude Code または Codex CLI が必要です。",
+    "bodyLine1": "Ralph Desktop でタスクを実行するには Claude Code、Codex、または OpenCode CLI が必要です。",
     "bodyLine2": "少なくとも 1 つインストールして再起動してください。",
     "claudeDesc": "Anthropic 公式 AI コーディングアシスタント",
     "codexDesc": "OpenAI Codex コマンドラインツール",
@@ -115,7 +115,8 @@
     "copyCommand": "コマンドをコピー",
     "viewDocs": "インストール手順を見る →",
     "restartHint": "インストール後、Ralph Desktop を再起動してください",
-    "refresh": "再検出"
+    "refresh": "再検出",
+    "opencodeDesc": "OpenCode オープンソースのコーディング支援ツール"
   },
   "settings": {
     "title": "設定",

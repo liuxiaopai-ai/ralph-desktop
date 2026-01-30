@@ -276,6 +276,7 @@
             >
               <option value="claude">Claude Code</option>
               <option value="codex">Codex</option>
+              <option value="opencode">OpenCode</option>
             </select>
           </div>
           <div>

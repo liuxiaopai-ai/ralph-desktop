@@ -106,7 +106,7 @@
   },
   "cliMissing": {
     "title": "Не обнаружены AI CLI инструменты",
-    "bodyLine1": "Ralph Desktop требует Claude Code или Codex CLI для выполнения задач.",
+    "bodyLine1": "Ralph Desktop требует Claude Code, Codex или OpenCode CLI для запуска задач.",
     "bodyLine2": "Установите хотя бы один инструмент и перезапустите приложение.",
     "claudeDesc": "Официальный помощник Anthropic",
     "codexDesc": "CLI-инструмент OpenAI Codex",
@@ -115,7 +115,8 @@
     "copyCommand": "Копировать команду",
     "viewDocs": "Открыть руководство установки →",
     "restartHint": "После установки перезапустите Ralph Desktop",
-    "refresh": "Обновить проверку"
+    "refresh": "Обновить проверку",
+    "opencodeDesc": "OpenCode — помощник программирования с открытым исходным кодом"
   },
   "settings": {
     "title": "Настройки",

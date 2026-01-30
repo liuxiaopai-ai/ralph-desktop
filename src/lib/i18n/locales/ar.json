@@ -106,7 +106,7 @@
   },
   "cliMissing": {
     "title": "لم يتم اكتشاف أدوات CLI للذكاء الاصطناعي",
-    "bodyLine1": "يتطلب Ralph Desktop Claude Code أو Codex CLI لتنفيذ المهام.",
+    "bodyLine1": "يتطلب Ralph Desktop وجود Claude Code أو Codex أو OpenCode CLI لتشغيل المهام.",
     "bodyLine2": "يرجى تثبيت أداة واحدة على الأقل ثم إعادة التشغيل.",
     "claudeDesc": "مساعد Anthropic الرسمي للبرمجة",
     "codexDesc": "أداة سطر أوامر OpenAI Codex",
@@ -115,7 +115,8 @@
     "copyCommand": "نسخ الأمر",
     "viewDocs": "عرض دليل التثبيت →",
     "restartHint": "بعد التثبيت، أعد تشغيل Ralph Desktop",
-    "refresh": "تحديث الكشف"
+    "refresh": "تحديث الكشف",
+    "opencodeDesc": "OpenCode مساعد برمجة مفتوح المصدر"
   },
   "settings": {
     "title": "الإعدادات",

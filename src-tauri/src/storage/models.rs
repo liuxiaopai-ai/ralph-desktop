@@ -47,6 +47,7 @@ fn default_language() -> String {
 pub enum CliType {
     Claude,
     Codex,
+    OpenCode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

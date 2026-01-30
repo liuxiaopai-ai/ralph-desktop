@@ -22,6 +22,13 @@
       installCmd: 'npm install -g @openai/codex',
       docUrl: 'https://github.com/openai/codex-cli',
       icon: '⚡'
+    },
+    opencode: {
+      name: 'OpenCode',
+      description: $_('cliMissing.opencodeDesc'),
+      installCmd: 'npm install -g opencode-ai',
+      docUrl: 'https://opencode.ai/docs/cli/',
+      icon: '🧩'
     }
   });
 

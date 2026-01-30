@@ -1,5 +1,5 @@
 // CLI Types
-export type CliType = 'claude' | 'codex';
+export type CliType = 'claude' | 'codex' | 'opencode';
 export type Theme = 'light' | 'dark' | 'system';
 export type ProjectStatus = 'brainstorming' | 'ready' | 'queued' | 'running' | 'pausing' | 'paused' | 'done' | 'failed' | 'cancelled';
 

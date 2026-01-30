@@ -106,7 +106,7 @@
   },
   "cliMissing": {
     "title": "未检测到 AI CLI 工具",
-    "bodyLine1": "Ralph Desktop 需要 Claude Code 或 Codex CLI 来执行任务。",
+    "bodyLine1": "Ralph Desktop 需要 Claude Code、Codex 或 OpenCode CLI 才能运行任务。",
     "bodyLine2": "请安装至少一个工具后重启应用。",
     "claudeDesc": "Anthropic 官方 AI 编程助手",
     "codexDesc": "OpenAI Codex 命令行工具",
@@ -115,7 +115,8 @@
     "copyCommand": "复制命令",
     "viewDocs": "查看安装文档 →",
     "restartHint": "安装完成后，请重启 Ralph Desktop",
-    "refresh": "刷新检测"
+    "refresh": "刷新检测",
+    "opencodeDesc": "OpenCode 开源编码助手"
   },
   "settings": {
     "title": "设置",

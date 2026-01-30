@@ -106,7 +106,7 @@
   },
   "cliMissing": {
     "title": "AI CLI টুল পাওয়া যায়নি",
-    "bodyLine1": "Ralph Desktop চালাতে Claude Code বা Codex CLI দরকার।",
+    "bodyLine1": "Ralph Desktop‑এ কাজ চালাতে Claude Code, Codex বা OpenCode CLI প্রয়োজন।",
     "bodyLine2": "কমপক্ষে একটি টুল ইনস্টল করে রিস্টার্ট করুন।",
     "claudeDesc": "Anthropic-এর অফিসিয়াল সহকারী",
     "codexDesc": "OpenAI Codex কমান্ড লাইন টুল",
@@ -115,7 +115,8 @@
     "copyCommand": "কমান্ড কপি করুন",
     "viewDocs": "ইনস্টল গাইড দেখুন →",
     "restartHint": "ইনস্টল শেষে Ralph Desktop রিস্টার্ট করুন",
-    "refresh": "রিফ্রেশ করুন"
+    "refresh": "রিফ্রেশ করুন",
+    "opencodeDesc": "OpenCode ওপেন সোর্স কোডিং সহকারী"
   },
   "settings": {
     "title": "সেটিংস",

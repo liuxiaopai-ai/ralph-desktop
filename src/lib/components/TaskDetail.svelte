@@ -16,6 +16,11 @@
 
   let starting = $state(false);
   let showPrompt = $state(false);
+  const cliLabels: Record<string, string> = {
+    claude: 'Claude Code',
+    codex: 'Codex',
+    opencode: 'OpenCode'
+  };
 
   const statusConfig = $derived({
     ready: { icon: '⚪', color: 'text-vscode-muted', label: $_('task.status.ready') },
@@ -98,7 +103,7 @@
             <div>
               <span class="text-vscode-muted">{$_('task.cli')}:</span>
               <span class="ml-2 text-vscode font-medium">
-                {project.task.cli === 'claude' ? 'Claude Code' : 'Codex'}
+                {cliLabels[project.task.cli] || project.task.cli}
               </span>
             </div>
             <div>
