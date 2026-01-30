@@ -23,7 +23,7 @@ impl Default for GlobalConfig {
         Self {
             version: "1.0.0".to_string(),
             default_cli: CliType::Claude,
-            default_max_iterations: 50,
+            default_max_iterations: 10,
             max_concurrent_projects: 3,
             iteration_timeout_ms: 600000, // 10 minutes
             idle_timeout_ms: 120000,      // 2 minutes

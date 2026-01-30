@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::Notify;
 
+pub mod ai_brainstorm;
 pub mod brainstorm;
 pub mod logs;
 

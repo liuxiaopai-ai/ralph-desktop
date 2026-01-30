@@ -6,7 +6,7 @@
   import type { ProjectState, CliType } from '$lib/types';
   import ProjectList from '$lib/components/ProjectList.svelte';
   import TaskDetail from '$lib/components/TaskDetail.svelte';
-  import BrainstormWizard from '$lib/components/BrainstormWizard.svelte';
+  import AiBrainstorm from '$lib/components/AiBrainstorm.svelte';
   import SettingsPanel from '$lib/components/SettingsPanel.svelte';
   import QueueStatus from '$lib/components/QueueStatus.svelte';
   import ShortcutsHelp from '$lib/components/ShortcutsHelp.svelte';
@@ -167,7 +167,7 @@
   <div class="flex-1 flex flex-col overflow-hidden">
     {#if $currentProject}
       {#if showBrainstorm}
-        <BrainstormWizard
+        <AiBrainstorm
           project={$currentProject}
           onComplete={handleBrainstormComplete}
           onCancel={() => showBrainstorm = false}

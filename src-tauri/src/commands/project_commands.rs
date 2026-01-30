@@ -1,4 +1,5 @@
 use super::*;
+use crate::engine::ai_brainstorm::{run_ai_brainstorm, AiBrainstormResponse, ConversationMessage};
 use crate::engine::brainstorm::generate_design_doc;
 use std::path::PathBuf;
 
@@ -206,6 +207,52 @@ pub async fn update_project_status(
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
 
     state.status = status;
+    state.updated_at = Utc::now();
+
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+
+    Ok(state)
+}
+
+/// AI-driven brainstorming - send a message and get AI response
+#[tauri::command]
+pub async fn ai_brainstorm_chat(
+    project_id: String,
+    conversation: Vec<ConversationMessage>,
+) -> Result<AiBrainstormResponse, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    let working_dir = PathBuf::from(&state.path);
+    run_ai_brainstorm(&working_dir, &conversation).await
+}
+
+/// Complete AI brainstorming with the generated prompt
+#[tauri::command]
+pub async fn complete_ai_brainstorm(
+    project_id: String,
+    generated_prompt: String,
+    cli: CliType,
+    max_iterations: u32,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    // Update brainstorm state
+    if let Some(ref mut brainstorm) = state.brainstorm {
+        brainstorm.completed_at = Some(Utc::now());
+    }
+
+    // Set task config with generated prompt
+    state.task = Some(TaskConfig {
+        prompt: generated_prompt,
+        design_doc_path: None,
+        cli,
+        max_iterations,
+        completion_signal: "<done>COMPLETE</done>".to_string(),
+    });
+
+    state.status = ProjectStatus::Ready;
     state.updated_at = Utc::now();
 
     storage::save_project_state(&state).map_err(|e| e.to_string())?;

@@ -31,6 +31,8 @@ pub fn run() {
             commands::save_brainstorm_answer,
             commands::complete_brainstorm,
             commands::update_project_status,
+            commands::ai_brainstorm_chat,
+            commands::complete_ai_brainstorm,
             // Loop commands
             commands::start_loop,
             commands::pause_loop,

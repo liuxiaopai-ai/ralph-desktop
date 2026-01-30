@@ -120,6 +120,35 @@ export async function getProjectLogs(projectId: string): Promise<string[]> {
   return invoke('get_project_logs', { projectId });
 }
 
+// AI Brainstorm Types
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiBrainstormResponse {
+  message: string;
+  isComplete: boolean;
+  generatedPrompt?: string;
+}
+
+// AI Brainstorm Commands
+export async function aiBrainstormChat(
+  projectId: string,
+  conversation: ConversationMessage[]
+): Promise<AiBrainstormResponse> {
+  return invoke('ai_brainstorm_chat', { projectId, conversation });
+}
+
+export async function completeAiBrainstorm(
+  projectId: string,
+  generatedPrompt: string,
+  cli: CliType,
+  maxIterations: number
+): Promise<ProjectState> {
+  return invoke('complete_ai_brainstorm', { projectId, generatedPrompt, cli, maxIterations });
+}
+
 // Event Listeners
 export async function listenToLoopEvents(
   callback: (event: LoopEvent) => void
