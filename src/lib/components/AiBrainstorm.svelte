@@ -33,6 +33,20 @@
   let selectedCli = $state<CliType>($config.defaultCli);
   let maxIterations = $state($config.defaultMaxIterations);
 
+  const prefersZh = typeof navigator !== 'undefined'
+    && (navigator.language || '').toLowerCase().startsWith('zh');
+  const uiCopy = prefersZh ? {
+    initialQuestion: '你想做什么？',
+    initialDescription: '请简单描述一下你的任务',
+    fallbackQuestion: '请继续描述你的需求',
+    fallbackDescription: '出现了一些问题，请重试',
+  } : {
+    initialQuestion: 'What do you want to do?',
+    initialDescription: 'Briefly describe your task',
+    fallbackQuestion: 'Please continue describing your requirements',
+    fallbackDescription: 'Something went wrong, please try again',
+  };
+
   // Start with initial question
   $effect(() => {
     if (conversation.length === 0 && !currentQuestion) {
@@ -45,8 +59,8 @@
     try {
       // First question: what do you want to do?
       currentQuestion = {
-        question: '你想做什么？',
-        description: '请简单描述一下你的任务',
+        question: uiCopy.initialQuestion,
+        description: uiCopy.initialDescription,
         options: [],
         multiSelect: false,
         allowOther: false,
@@ -95,8 +109,8 @@
       console.error('Failed to get AI response:', error);
       // Fallback question
       currentQuestion = {
-        question: '请继续描述你的需求',
-        description: '出现了一些问题，请重试',
+        question: uiCopy.fallbackQuestion,
+        description: uiCopy.fallbackDescription,
         options: [],
         multiSelect: false,
         allowOther: false,

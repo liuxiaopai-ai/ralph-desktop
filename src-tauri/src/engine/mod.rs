@@ -10,7 +10,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::Notify;
 
 pub mod ai_brainstorm;
-pub mod brainstorm;
 pub mod logs;
 
 pub const CODEX_GIT_REPO_CHECK_REQUIRED: &str = "codex_git_repo_check_required";

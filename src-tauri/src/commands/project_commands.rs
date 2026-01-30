@@ -1,6 +1,5 @@
 use super::*;
 use crate::engine::ai_brainstorm::{run_ai_brainstorm, AiBrainstormResponse, ConversationMessage};
-use crate::engine::brainstorm::generate_design_doc;
 use std::path::PathBuf;
 
 /// List all projects with synced status
@@ -142,93 +141,6 @@ pub async fn confirm_permissions() -> Result<(), String> {
     config.permissions_confirmed = true;
     config.permissions_confirmed_at = Some(Utc::now());
     storage::save_config(&config).map_err(|e| e.to_string())
-}
-
-/// Get brainstorm questions
-#[tauri::command]
-pub async fn get_brainstorm_questions() -> Result<Vec<QuestionTemplate>, String> {
-    Ok(get_question_flow())
-}
-
-/// Save brainstorm answer and update project state
-#[tauri::command]
-pub async fn save_brainstorm_answer(
-    project_id: String,
-    question_id: String,
-    question: String,
-    answer: serde_json::Value,
-) -> Result<ProjectState, String> {
-    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
-    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-
-    let brainstorm_answer = BrainstormAnswer {
-        question_id,
-        question,
-        answer,
-        answered_at: Utc::now(),
-    };
-
-    if let Some(ref mut brainstorm) = state.brainstorm {
-        // Remove existing answer for this question if any
-        brainstorm.answers.retain(|a| a.question_id != brainstorm_answer.question_id);
-        brainstorm.answers.push(brainstorm_answer);
-    }
-
-    state.updated_at = Utc::now();
-    storage::save_project_state(&state).map_err(|e| e.to_string())?;
-
-    Ok(state)
-}
-
-/// Complete brainstorm and generate prompt
-#[tauri::command]
-pub async fn complete_brainstorm(
-    project_id: String,
-    cli: CliType,
-    max_iterations: u32,
-) -> Result<ProjectState, String> {
-    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
-    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-
-    // Convert answers to HashMap
-    let mut answers_map: HashMap<String, serde_json::Value> = HashMap::new();
-    if let Some(ref brainstorm) = state.brainstorm {
-        for answer in &brainstorm.answers {
-            answers_map.insert(answer.question_id.clone(), answer.answer.clone());
-        }
-    }
-
-    // Generate prompt
-    let prompt = generate_prompt(&answers_map);
-
-    // Generate design document
-    let project_path = PathBuf::from(&state.path);
-    let design_doc_path = generate_design_doc(
-        &state.name,
-        &project_path,
-        &answers_map,
-        &prompt,
-    ).ok();
-
-    // Update state
-    if let Some(ref mut brainstorm) = state.brainstorm {
-        brainstorm.completed_at = Some(Utc::now());
-    }
-
-    state.task = Some(TaskConfig {
-        prompt,
-        design_doc_path,
-        cli,
-        max_iterations,
-        completion_signal: "<done>COMPLETE</done>".to_string(),
-    });
-
-    state.status = ProjectStatus::Ready;
-    state.updated_at = Utc::now();
-
-    storage::save_project_state(&state).map_err(|e| e.to_string())?;
-
-    Ok(state)
 }
 
 /// Update project status

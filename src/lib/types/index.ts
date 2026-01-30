@@ -2,7 +2,6 @@
 export type CliType = 'claude' | 'codex';
 export type Theme = 'light' | 'dark' | 'system';
 export type ProjectStatus = 'brainstorming' | 'ready' | 'queued' | 'running' | 'pausing' | 'paused' | 'done' | 'failed' | 'cancelled';
-export type QuestionType = 'single' | 'multiple' | 'text';
 
 // Global Config
 export interface GlobalConfig {
@@ -78,24 +77,6 @@ export interface CliInfo {
   version?: string;
   path: string;
   available: boolean;
-}
-
-// Brainstorm Types
-export interface QuestionTemplate {
-  id: string;
-  phase: string;
-  question: string;
-  description?: string;
-  questionType: QuestionType;
-  options: QuestionOption[];
-  allowOther: boolean;
-  required: boolean;
-}
-
-export interface QuestionOption {
-  value: string;
-  label: string;
-  description?: string;
 }
 
 // Loop Events

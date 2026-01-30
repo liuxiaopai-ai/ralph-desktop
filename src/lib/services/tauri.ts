@@ -5,7 +5,6 @@ import type {
   ProjectMeta,
   ProjectState,
   CliInfo,
-  QuestionTemplate,
   CliType,
   ProjectStatus,
   LoopEvent
@@ -55,28 +54,6 @@ export async function saveConfig(config: GlobalConfig): Promise<void> {
 
 export async function confirmPermissions(): Promise<void> {
   return invoke('confirm_permissions');
-}
-
-// Brainstorm Commands
-export async function getBrainstormQuestions(): Promise<QuestionTemplate[]> {
-  return invoke('get_brainstorm_questions');
-}
-
-export async function saveBrainstormAnswer(
-  projectId: string,
-  questionId: string,
-  question: string,
-  answer: string | string[]
-): Promise<ProjectState> {
-  return invoke('save_brainstorm_answer', { projectId, questionId, question, answer });
-}
-
-export async function completeBrainstorm(
-  projectId: string,
-  cli: CliType,
-  maxIterations: number
-): Promise<ProjectState> {
-  return invoke('complete_brainstorm', { projectId, cli, maxIterations });
 }
 
 export async function updateProjectStatus(

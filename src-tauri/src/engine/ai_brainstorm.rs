@@ -193,15 +193,15 @@ pub async fn run_ai_brainstorm(
 
     for msg in conversation {
         if msg.role == "user" {
-            context.push_str(&format!("用户: {}\n\n", msg.content));
+            context.push_str(&format!("User: {}\n\n", msg.content));
         } else {
-            context.push_str(&format!("助手: {}\n\n", msg.content));
+            context.push_str(&format!("Assistant: {}\n\n", msg.content));
         }
     }
 
     // Create the prompt for Claude
     let prompt = format!(
-        "{}\n\n## 当前对话\n\n{}\n\n请根据对话历史，输出下一个问题的 JSON（或完成的 prompt）。只输出 JSON，不要其他内容。",
+        "{}\n\n## Conversation\n\n{}\n\nBased on the conversation above, output the next question JSON (or the final prompt). Output JSON only.",
         BRAINSTORM_SYSTEM_PROMPT,
         context
     );
@@ -229,9 +229,14 @@ fn parse_ai_response(output: &str) -> Result<AiBrainstormResponse, String> {
 
             // Check if it looks like a completion
             if trimmed.contains("<done>COMPLETE</done>") {
+                let (question, description) = if contains_cjk(trimmed) {
+                    ("需求收集完成".to_string(), "已生成任务 prompt".to_string())
+                } else {
+                    ("Requirements complete".to_string(), "Generated task prompt".to_string())
+                };
                 Ok(AiBrainstormResponse {
-                    question: "需求收集完成".to_string(),
-                    description: Some("已生成任务 prompt".to_string()),
+                    question,
+                    description: Some(description),
                     options: vec![],
                     multi_select: false,
                     allow_other: false,
@@ -288,6 +293,12 @@ fn extract_json(output: &str) -> Result<String, String> {
     }
 
     Err(format!("No JSON found in output: {}", output))
+}
+
+fn contains_cjk(input: &str) -> bool {
+    input.chars().any(|ch| {
+        ('\u{4E00}'..='\u{9FFF}').contains(&ch) || ('\u{3400}'..='\u{4DBF}').contains(&ch)
+    })
 }
 
 /// Call Claude Code CLI and get response
