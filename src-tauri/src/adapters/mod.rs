@@ -14,6 +14,7 @@ pub mod codex;
 pub mod opencode;
 
 /// Parsed output line from CLI
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ParsedLine {
     pub content: String,
@@ -34,6 +35,7 @@ pub struct CommandOptions {
 }
 
 /// CLI adapter trait for different CLI implementations
+#[allow(dead_code)]
 #[async_trait]
 pub trait CliAdapter: Send + Sync {
     /// Adapter name

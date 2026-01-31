@@ -5,12 +5,14 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
 /// Log manager for persisting execution logs
+#[allow(dead_code)]
 pub struct LogManager {
     project_id: uuid::Uuid,
     log_file: Option<BufWriter<File>>,
     log_path: Option<PathBuf>,
 }
 
+#[allow(dead_code)]
 impl LogManager {
     pub fn new(project_id: uuid::Uuid) -> Self {
         Self {

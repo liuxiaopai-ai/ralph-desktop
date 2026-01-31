@@ -1,6 +1,7 @@
 use regex::Regex;
 
 /// Sanitize log content to remove sensitive information
+#[allow(dead_code)]
 pub fn sanitize_log(content: &str) -> String {
     let patterns = [
         // API Keys

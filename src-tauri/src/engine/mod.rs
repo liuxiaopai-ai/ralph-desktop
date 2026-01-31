@@ -15,6 +15,7 @@ pub mod logs;
 pub const CODEX_GIT_REPO_CHECK_REQUIRED: &str = "codex_git_repo_check_required";
 
 /// Loop events sent to frontend
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum LoopEvent {
@@ -48,6 +49,7 @@ pub enum LoopEvent {
 }
 
 /// Loop engine state
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoopState {
     Idle,
@@ -76,6 +78,7 @@ pub struct LoopEngine {
     app_handle: AppHandle,
 }
 
+#[allow(dead_code)]
 impl LoopEngine {
     pub fn new(
         project_id: String,

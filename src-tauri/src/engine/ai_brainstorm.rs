@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Stdio;
-use tokio::process::Command;
 
 /// AI brainstorm response with structured options
 #[derive(Debug, Clone, Serialize, Deserialize)]
