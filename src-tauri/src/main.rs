@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    ralph_desktop_cc_lib::run()
+    ralph_desktop_lib::run()
 }

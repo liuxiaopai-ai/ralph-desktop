@@ -1,12 +1,12 @@
 [package]
-name = "ralph-desktop-cc"
-version = "0.1.0"
+name = "ralph-desktop"
+version = "0.1.1"
 description = "Ralph Desktop - Visual Ralph Loop Controller"
-authors = ["Ralph Desktop Team"]
+authors = ["刘小排"]
 edition = "2021"
 
 [lib]
-name = "ralph_desktop_cc_lib"
+name = "ralph_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
