@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:e2e": "node scripts/e2e/run_e2e.mjs",
+    "test:e2e:cli": "node scripts/e2e/run_e2e.mjs --cli"
   },
   "license": "MIT",
   "dependencies": {
@@ -30,6 +32,7 @@
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.6.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "playwright": "^1.51.0"
   }
 }

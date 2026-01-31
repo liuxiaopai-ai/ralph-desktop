@@ -18,6 +18,8 @@
   let showSettings = $state(false);
   let showShortcuts = $state(false);
   let creatingProject = $state(false);
+  const isE2E = import.meta.env.VITE_E2E === '1';
+  const e2eProjectPath = import.meta.env.VITE_E2E_PROJECT_PATH as string | undefined;
 
   // Keyboard shortcuts
   const shortcuts = $derived([
@@ -62,16 +64,23 @@
   async function handleCreateProject() {
     creatingProject = true;
     try {
-      // Use Tauri dialog to select directory
-      const { open } = await import('@tauri-apps/plugin-dialog');
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: $_('dialogs.selectProjectDir')
-      });
+      let selected: string | null = null;
+
+      if (isE2E) {
+        const ts = Date.now();
+        selected = e2eProjectPath || `/tmp/ralph-e2e-${ts}`;
+      } else {
+        // Use Tauri dialog to select directory
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        selected = await open({
+          directory: true,
+          multiple: false,
+          title: $_('dialogs.selectProjectDir')
+        }) as string | null;
+      }
 
       if (selected) {
-        const path = selected as string;
+        const path = selected;
         const name = path.split('/').pop() || $_('app.newProject');
         const project = await api.createProject(path, name);
         addProject({
@@ -147,6 +156,7 @@
         class="w-full py-1.5 px-3 bg-vscode-accent hover:bg-vscode-accent-hover text-white text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
         onclick={handleCreateProject}
         disabled={creatingProject || availableCliCount === 0}
+        data-testid="new-project"
       >
         <span>+</span>
         <span>{$_('app.newProject')}</span>

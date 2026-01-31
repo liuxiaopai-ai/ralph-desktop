@@ -91,7 +91,7 @@
       </div>
       <div class="flex items-center gap-2">
         <span class={status.color}>{status.icon}</span>
-        <span class="text-sm font-medium text-vscode-dim">{status.label}</span>
+        <span class="text-sm font-medium text-vscode-dim" data-testid="task-status" data-status={project.status}>{status.label}</span>
       </div>
     </div>
 
@@ -147,6 +147,7 @@
             class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
             onclick={handleStart}
             disabled={starting}
+            data-testid="task-start"
           >
             <span>▶</span>
             <span>{starting ? $_('task.starting') : $_('task.start')}</span>
@@ -157,6 +158,7 @@
           <button
             class="px-4 py-2 bg-vscode-warning text-black rounded-lg flex items-center gap-2 hover:opacity-90"
             onclick={handlePause}
+          data-testid="task-pause"
           >
             <span>⏸</span>
             <span>{$_('task.pause')}</span>
@@ -167,6 +169,7 @@
           <button
             class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2"
             onclick={handleResume}
+          data-testid="task-resume"
           >
             <span>▶</span>
             <span>{$_('task.resume')}</span>
@@ -177,6 +180,7 @@
           <button
             class="px-4 py-2 bg-vscode-error text-white rounded-lg flex items-center gap-2 hover:opacity-90"
             onclick={handleStop}
+          data-testid="task-stop"
           >
             <span>⏹</span>
             <span>{$_('task.stop')}</span>

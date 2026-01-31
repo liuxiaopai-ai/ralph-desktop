@@ -36,3 +36,11 @@ Ralph Desktop is a Tauri 2.x + Svelte 5 desktop app for orchestrating CLI coding
 - `src-tauri/Cargo.lock` should be regenerated after Cargo.toml changes (run cargo check/build).
 - Release requirement docs mention v0.1.0 intentionally; update only when bumping release docs.
 
+## E2E Testing
+- Headless webview E2E runs via `pnpm test:e2e` (uses Playwright).
+- E2E mode is enabled with `VITE_E2E=1` and uses mocked tauri services.
+- CLI coverage runs sequentially: Codex then Claude (override with `--cli`).
+- E2E temp paths use `/tmp/ralph-e2e-*` and artifacts go to `./artifacts/e2e/`.
+- Set `E2E_HOST`/`E2E_PORT` if needed; default host is `localhost`.
+- `./artifacts` is gitignored; keep temporary outputs out of version control.
+

@@ -33,6 +33,7 @@
 <div
   bind:this={container}
   class="h-full overflow-y-auto font-mono text-sm p-4"
+  data-testid="log-viewer"
   onscroll={handleScroll}
 >
   {#if logs.length === 0}
@@ -41,7 +42,7 @@
     </div>
   {:else}
     {#each logs as log, i (i)}
-      <div class="flex gap-2 hover:bg-vscode-hover py-0.5 {log.isStderr ? 'text-vscode-error' : 'text-vscode'}">
+      <div class="flex gap-2 hover:bg-vscode-hover py-0.5 {log.isStderr ? 'text-vscode-error' : 'text-vscode'}" data-testid="log-line">
         <span class="text-vscode-muted shrink-0">[#{log.iteration}]</span>
         <span class="text-vscode-muted shrink-0">{formatTime(log.timestamp)}</span>
         <span class="break-all">{log.content}</span>

@@ -30,6 +30,7 @@
   let customInput = $state('');
   let showOtherInput = $state(false);
   let isLoading = $state(false);
+  let lastError = $state<string | null>(null);
   let generatedPrompt = $state<string | null>(null);
   let selectedCli = $state<CliType>($config.defaultCli);
   let maxIterations = $state($config.defaultMaxIterations);
@@ -62,6 +63,8 @@
   async function submitAnswer(answer: string) {
     if (isLoading) return;
 
+    lastError = null;
+
     // Save current question and user's selection to history
     if (currentQuestion) {
       history = [...history, {
@@ -88,13 +91,16 @@
       if (response.isComplete && response.generatedPrompt) {
         generatedPrompt = response.generatedPrompt;
         currentQuestion = null;
+        lastError = null;
       } else {
         // Add AI response to conversation for context
         conversation = [...conversation, { role: 'assistant', content: response.question }];
         currentQuestion = response;
+        lastError = null;
       }
     } catch (error) {
       console.error('Failed to get AI response:', error);
+      lastError = error instanceof Error ? error.message : String(error);
       // Fallback question
       currentQuestion = {
         question: $_('brainstorm.fallbackQuestion'),
@@ -299,6 +305,11 @@
           {#if currentQuestion.description}
             <p class="text-sm text-vscode-dim">{currentQuestion.description}</p>
           {/if}
+          {#if lastError}
+            <div class="mt-2 rounded border border-[#f14c4c40] bg-[#f14c4c14] p-3">
+              <pre class="text-xs text-[#f14c4c] whitespace-pre-wrap">{lastError}</pre>
+            </div>
+          {/if}
         </div>
 
         <!-- Options as cards -->
@@ -370,6 +381,7 @@
                 placeholder={$_('brainstorm.answerPlaceholder')}
                 bind:value={customInput}
                 onkeydown={handleKeydown}
+                data-testid="brainstorm-input"
               ></textarea>
             </div>
           {/if}
@@ -382,6 +394,7 @@
               placeholder={$_('brainstorm.answerPlaceholder')}
               bind:value={customInput}
               onkeydown={handleKeydown}
+              data-testid="brainstorm-input"
             ></textarea>
           </div>
         {/if}
@@ -428,6 +441,7 @@
           class="px-4 py-1.5 bg-vscode-accent hover:bg-vscode-accent-hover text-white rounded text-sm disabled:opacity-50"
           onclick={handleComplete}
           disabled={isLoading}
+          data-testid="brainstorm-start"
         >
           {$_('brainstorm.startExecution')}
         </button>
@@ -436,6 +450,7 @@
           <button
             class="px-4 py-1.5 bg-vscode-accent hover:bg-vscode-accent-hover text-white rounded text-sm"
             onclick={handleSubmitMultiple}
+          data-testid="brainstorm-submit"
           >
             <span class="opacity-70 mr-1">{selectedOptions.size + (showOtherInput && customInput.trim() ? 1 : 0)}</span>
             {$_('brainstorm.submitLabel')}
@@ -445,6 +460,7 @@
             class="px-4 py-1.5 bg-vscode-accent hover:bg-vscode-accent-hover text-white rounded text-sm disabled:opacity-50"
             onclick={handleSubmitText}
             disabled={!customInput.trim()}
+            data-testid="brainstorm-submit"
           >
             {$_('brainstorm.continueLabel')}
           </button>
@@ -453,6 +469,7 @@
             class="px-4 py-1.5 bg-vscode-accent hover:bg-vscode-accent-hover text-white rounded text-sm disabled:opacity-50"
             onclick={handleSubmitText}
             disabled={!customInput.trim()}
+            data-testid="brainstorm-submit"
           >
             {$_('brainstorm.continueLabel')}
           </button>
