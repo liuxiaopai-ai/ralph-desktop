@@ -1,3 +1,5 @@
+use crate::adapters::{get_adapter, CommandOptions, LineType};
+use crate::storage::models::CliType;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Stdio;
@@ -197,6 +199,8 @@ Remember: Match the user's language in all your responses!"#;
 pub async fn run_ai_brainstorm(
     working_dir: &Path,
     conversation: &[ConversationMessage],
+    cli_type: CliType,
+    skip_git_repo_check: bool,
 ) -> Result<AiBrainstormResponse, String> {
     // Build the conversation context
     let mut context = String::new();
@@ -217,7 +221,7 @@ pub async fn run_ai_brainstorm(
     );
 
     // Call Claude Code CLI
-    let output = call_claude_cli(working_dir, &prompt).await?;
+    let output = call_brainstorm_cli(cli_type, working_dir, &prompt, skip_git_repo_check).await?;
 
     // Parse JSON response
     parse_ai_response(&output)
@@ -435,4 +439,207 @@ async fn call_claude_cli(working_dir: &Path, prompt: &str) -> Result<String, Str
     }
 
     Ok(stdout)
+}
+
+async fn call_brainstorm_cli(
+    cli_type: CliType,
+    working_dir: &Path,
+    prompt: &str,
+    skip_git_repo_check: bool,
+) -> Result<String, String> {
+    match cli_type {
+        CliType::Claude => call_claude_cli(working_dir, prompt).await,
+        CliType::Codex | CliType::OpenCode => {
+            call_other_cli(cli_type, working_dir, prompt, skip_git_repo_check).await
+        }
+    }
+}
+
+async fn call_other_cli(
+    cli_type: CliType,
+    working_dir: &Path,
+    prompt: &str,
+    skip_git_repo_check: bool,
+) -> Result<String, String> {
+    let adapter = get_adapter(cli_type);
+    let options = CommandOptions { skip_git_repo_check };
+    let mut cmd = adapter.build_readonly_command(prompt, working_dir, options);
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run CLI: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if !output.status.success() {
+        let message = if !stderr.trim().is_empty() {
+            stderr.trim().to_string()
+        } else if !stdout.trim().is_empty() {
+            stdout.trim().to_string()
+        } else {
+            format!("CLI exited with status: {}", output.status)
+        };
+        return Err(message);
+    }
+
+    let (text, stream_error) = collect_brainstorm_output(cli_type, &stdout);
+    if !text.trim().is_empty() {
+        return Ok(text);
+    }
+    if let Some(error) = stream_error {
+        return Err(error);
+    }
+    if !stderr.trim().is_empty() {
+        return Err(stderr.trim().to_string());
+    }
+    Ok(stdout)
+}
+
+fn collect_brainstorm_output(cli_type: CliType, stdout: &str) -> (String, Option<String>) {
+    let adapter = get_adapter(cli_type);
+    let mut text = String::new();
+    let mut error = None;
+
+    for line in stdout.lines() {
+        let parsed = adapter.parse_output_line(line);
+
+        if parsed.line_type == LineType::Error {
+            if error.is_none() && !parsed.content.trim().is_empty() {
+                error = Some(parsed.content.trim().to_string());
+            }
+            continue;
+        }
+
+        if parsed.content.trim().is_empty() {
+            continue;
+        }
+
+        if parsed.line_type == LineType::Json && parsed.content == line {
+            continue;
+        }
+
+        if parsed.line_type == LineType::Text {
+            if !text.is_empty() {
+                text.push('\n');
+            }
+            text.push_str(parsed.content.trim_end());
+        } else {
+            text.push_str(parsed.content.as_str());
+        }
+    }
+
+    (text, error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ConversationMessage;
+    use crate::storage;
+    use crate::storage::models::{BrainstormState, CliType, GlobalConfig, ProjectState, ProjectStatus};
+    use chrono::Utc;
+    use std::env;
+    use std::ffi::{OsStr, OsString};
+    use std::fs;
+    use std::path::Path;
+    use tempfile::TempDir;
+    use uuid::Uuid;
+
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    struct EnvVarGuard {
+        key: &'static str,
+        prev: Option<OsString>,
+    }
+
+    impl EnvVarGuard {
+        fn set(key: &'static str, value: impl AsRef<OsStr>) -> Self {
+            let prev = env::var_os(key);
+            env::set_var(key, value);
+            Self { key, prev }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            if let Some(prev) = self.prev.take() {
+                env::set_var(self.key, prev);
+            } else {
+                env::remove_var(self.key);
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    fn write_executable(path: &Path, contents: &str) {
+        fs::write(path, contents).unwrap();
+        let mut perms = fs::metadata(path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(path, perms).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn brainstorm_uses_configured_cli() {
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path();
+        let _home_guard = EnvVarGuard::set("HOME", home_dir);
+        let _shell_guard = EnvVarGuard::set("SHELL", "/bin/bash");
+
+        let bin_dir = home_dir.join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+
+        let codex_script = r#"#!/usr/bin/env bash
+echo '{"question":"Hi","description":null,"options":[],"multiSelect":false,"allowOther":false,"isComplete":false}'
+"#;
+        write_executable(&bin_dir.join("codex"), codex_script);
+
+        let claude_script = r#"#!/usr/bin/env bash
+echo 'not-json'
+"#;
+        write_executable(&bin_dir.join("claude"), claude_script);
+
+        let current_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = format!("{}:{}", bin_dir.display(), current_path.to_string_lossy());
+        let _path_guard = EnvVarGuard::set("PATH", new_path);
+
+        let project_path = home_dir.join("project");
+        fs::create_dir_all(&project_path).unwrap();
+
+        let mut config = GlobalConfig::default();
+        config.default_cli = CliType::Codex;
+        storage::save_config(&config).unwrap();
+
+        let now = Utc::now();
+        let project_id = Uuid::new_v4();
+        let project_state = ProjectState {
+            id: project_id,
+            name: "Test".to_string(),
+            path: project_path.to_string_lossy().to_string(),
+            status: ProjectStatus::Brainstorming,
+            skip_git_repo_check: false,
+            brainstorm: Some(BrainstormState {
+                answers: vec![],
+                completed_at: None,
+            }),
+            task: None,
+            execution: None,
+            created_at: now,
+            updated_at: now,
+        };
+        storage::save_project_state(&project_state).unwrap();
+
+        let response = crate::commands::ai_brainstorm_chat(
+            project_id.to_string(),
+            vec![ConversationMessage {
+                role: "user".to_string(),
+                content: "Test".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.question, "Hi");
+    }
 }

@@ -248,9 +248,15 @@ pub async fn ai_brainstorm_chat(
 ) -> Result<AiBrainstormResponse, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+    let config = storage::load_config().map_err(|e| e.to_string())?;
 
     let working_dir = PathBuf::from(&state.path);
-    run_ai_brainstorm(&working_dir, &conversation)
+    run_ai_brainstorm(
+        &working_dir,
+        &conversation,
+        config.default_cli,
+        state.skip_git_repo_check,
+    )
         .await
         .map_err(|e| security::sanitize_log(&e))
 }
