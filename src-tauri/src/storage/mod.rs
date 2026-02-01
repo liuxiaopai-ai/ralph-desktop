@@ -1,5 +1,6 @@
 pub mod models;
 
+use crate::adapters::resolve_cli_path;
 use crate::storage::models::*;
 use std::fs;
 use std::path::PathBuf;
@@ -34,13 +35,30 @@ pub fn ensure_data_dir() -> Result<PathBuf> {
     Ok(data_dir)
 }
 
+/// Detect the first available CLI to use as default
+fn detect_default_cli() -> CliType {
+    if resolve_cli_path("claude").is_some() {
+        return CliType::Claude;
+    }
+    if resolve_cli_path("codex").is_some() {
+        return CliType::Codex;
+    }
+    if resolve_cli_path("opencode").is_some() {
+        return CliType::OpenCode;
+    }
+    // Fallback to Claude (will show proper error if not installed)
+    CliType::Claude
+}
+
 /// Load global config
 pub fn load_config() -> Result<GlobalConfig> {
     let data_dir = get_data_dir()?;
     let config_path = data_dir.join("config.json");
 
     if !config_path.exists() {
-        let config = GlobalConfig::default();
+        let mut config = GlobalConfig::default();
+        // Auto-detect installed CLI for first-time users
+        config.default_cli = detect_default_cli();
         save_config(&config)?;
         return Ok(config);
     }
