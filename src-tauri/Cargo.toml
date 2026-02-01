@@ -1,6 +1,6 @@
 [package]
 name = "ralph-desktop"
-version = "0.1.9"
+version = "0.1.10"
 description = "Ralph Desktop - Visual Ralph Loop Controller"
 authors = ["刘小排"]
 edition = "2021"

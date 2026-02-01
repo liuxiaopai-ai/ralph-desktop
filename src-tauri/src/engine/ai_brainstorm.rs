@@ -287,14 +287,16 @@ fn parse_ai_response(output: &str) -> Result<AiBrainstormResponse, String> {
 }
 
 /// Extract JSON from output (handles markdown code blocks)
+/// Extract JSON object from output using bracket matching algorithm
 fn extract_json(output: &str) -> Result<String, String> {
     let trimmed = output.trim();
 
-    // Try to find JSON in code block
+    // Try to find JSON in code block first
     if let Some(start) = trimmed.find("```json") {
         let json_start = start + 7;
         if let Some(end) = trimmed[json_start..].find("```") {
-            return Ok(trimmed[json_start..json_start + end].trim().to_string());
+            let json_str = trimmed[json_start..json_start + end].trim();
+            return validate_json_structure(json_str);
         }
     }
 
@@ -308,18 +310,118 @@ fn extract_json(output: &str) -> Result<String, String> {
             block_start
         };
         if let Some(end) = trimmed[json_start..].find("```") {
-            return Ok(trimmed[json_start..json_start + end].trim().to_string());
+            let json_str = trimmed[json_start..json_start + end].trim();
+            return validate_json_structure(json_str);
         }
     }
 
-    // Try to find raw JSON object
+    // Try to find raw JSON object using bracket matching
     if let Some(start) = trimmed.find('{') {
-        if let Some(end) = trimmed.rfind('}') {
-            return Ok(trimmed[start..=end].to_string());
+        match extract_balanced_json(&trimmed[start..]) {
+            Ok(json_str) => return Ok(json_str),
+            Err(e) => return Err(e),
         }
     }
 
-    Err(format!("No JSON found in output: {}", output))
+    Err(format!("No JSON found in output: {}", truncate_for_error(output, 500)))
+}
+
+/// Extract a balanced JSON object using bracket matching
+fn extract_balanced_json(input: &str) -> Result<String, String> {
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape_next = false;
+    let chars: Vec<char> = input.chars().collect();
+    
+    for (i, &ch) in chars.iter().enumerate() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        
+        match ch {
+            '\\' if in_string => escape_next = true,
+            '"' if !escape_next => in_string = !in_string,
+            '{' if !in_string => depth += 1,
+            '}' if !in_string => {
+                depth -= 1;
+                if depth == 0 {
+                    // Found complete JSON object
+                    let json_str: String = chars[..=i].iter().collect();
+                    return Ok(json_str);
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    // JSON is incomplete
+    if depth > 0 {
+        Err(format!(
+            "Incomplete JSON: missing {} closing brace(s). This usually means the AI response was truncated. Partial content: {}",
+            depth,
+            truncate_for_error(input, 300)
+        ))
+    } else if in_string {
+        Err(format!(
+            "Incomplete JSON: unclosed string. This usually means the AI response was truncated. Partial content: {}",
+            truncate_for_error(input, 300)
+        ))
+    } else {
+        Err(format!("Invalid JSON structure in: {}", truncate_for_error(input, 300)))
+    }
+}
+
+/// Validate that extracted JSON has balanced structure
+fn validate_json_structure(json_str: &str) -> Result<String, String> {
+    let trimmed = json_str.trim();
+    if trimmed.is_empty() {
+        return Err("Empty JSON content".to_string());
+    }
+    
+    // Quick validation using bracket matching
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape_next = false;
+    
+    for ch in trimmed.chars() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        
+        match ch {
+            '\\' if in_string => escape_next = true,
+            '"' if !escape_next => in_string = !in_string,
+            '{' | '[' if !in_string => depth += 1,
+            '}' | ']' if !in_string => depth -= 1,
+            _ => {}
+        }
+    }
+    
+    if depth != 0 {
+        Err(format!(
+            "Unbalanced JSON structure (depth={}). Content may be truncated: {}",
+            depth,
+            truncate_for_error(trimmed, 300)
+        ))
+    } else if in_string {
+        Err(format!(
+            "Unclosed string in JSON. Content may be truncated: {}",
+            truncate_for_error(trimmed, 300)
+        ))
+    } else {
+        Ok(trimmed.to_string())
+    }
+}
+
+/// Truncate string for error messages to avoid huge logs
+fn truncate_for_error(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}... (truncated, total {} chars)", &s[..max_len], s.len())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
