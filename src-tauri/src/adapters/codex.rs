@@ -1,6 +1,6 @@
 use super::{
-    apply_extended_path, apply_shell_env, command_for_cli, resolve_cli_path, CliAdapter,
-    CommandOptions, LineType, ParsedLine,
+    apply_extended_path, apply_shell_env, command_for_cli, hide_console_window, resolve_cli_path,
+    CliAdapter, CommandOptions, LineType, ParsedLine,
 };
 use crate::storage::models::CliType;
 use async_trait::async_trait;
@@ -88,6 +88,7 @@ impl CliAdapter for CodexAdapter {
         let mut cmd = Command::new(exe);
         apply_extended_path(&mut cmd);
         apply_shell_env(&mut cmd);
+        hide_console_window(&mut cmd);
         let output = cmd.arg("--version").output().await.ok()?;
 
         if output.status.success() {

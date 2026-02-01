@@ -9,6 +9,25 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use tokio::process::Command;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+/// Windows flag to prevent console window from appearing
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// Apply CREATE_NO_WINDOW flag to hide console window on Windows
+#[cfg(target_os = "windows")]
+pub fn hide_console_window(cmd: &mut Command) {
+    cmd.creation_flags(CREATE_NO_WINDOW);
+}
+
+/// No-op on non-Windows platforms
+#[cfg(not(target_os = "windows"))]
+pub fn hide_console_window(_cmd: &mut Command) {
+    // No-op
+}
+
 pub mod claude;
 pub mod codex;
 pub mod opencode;
@@ -216,25 +235,16 @@ pub fn command_for_cli(exe: &str, args: &[String], working_dir: &Path) -> Comman
             let mut cmd = Command::new("cmd");
             cmd.arg("/C");
             // Quote the executable path to prevent injection if it contains spaces or special chars
-            // Note: In Windows cmd /c, usually the whole string needs careful quoting,
-            // but here we are passing it as a single argument to Rust's Command which handles escaping.
-            // However, cmd /c behavior is tricky. The safer way is often just passing it.
-            // But reviewer suggested quoting. Let's try to just pass it as is because Rust Command arg escaping usually works.
-            // Wait, the reviewer specifically said: "cmd.arg(exe); // ⚠️ if exe contains special chars..."
-            // "Suggestion: Quote wrapper or validation."
-            // Since Rust's `Command::arg` passes the argument to CreateProcess, it handles spaces.
-            // But `cmd /C` parses the rest of the command line.
-            // If `exe` is `C:\Program Files\foo.bat`, `cmd /C C:\Program Files\foo.bat` fails.
-            // It needs to be `cmd /C "C:\Program Files\foo.bat"`.
-            // So we should wrap it in quotes manually if we are passing it to /C.
             cmd.arg(format!("\"{}\"", exe));
             cmd.args(args);
             cmd.current_dir(working_dir);
+            hide_console_window(&mut cmd);
             cmd
         } else {
             let mut cmd = Command::new(exe);
             cmd.current_dir(working_dir);
             cmd.args(args);
+            hide_console_window(&mut cmd);
             cmd
         }
     }

@@ -10,6 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 #[cfg(target_os = "windows")]
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
+use crate::adapters::hide_console_window;
 use tokio::sync::Notify;
 
 pub mod ai_brainstorm;
@@ -210,10 +211,10 @@ Diff:
     }
 
     async fn run_git(&self, args: &[&str]) -> Result<String, String> {
-        let output = Command::new("git")
-            .arg("-C")
-            .arg(&self.project_path)
-            .args(args)
+        let mut cmd = Command::new("git");
+        cmd.arg("-C").arg(&self.project_path).args(args);
+        hide_console_window(&mut cmd);
+        let output = cmd
             .output()
             .await
             .map_err(|e| format!("Failed to run git: {e}"))?;
@@ -227,11 +228,13 @@ Diff:
     }
 
     async fn is_git_repo(&self) -> Result<bool, String> {
-        let output = Command::new("git")
-            .arg("-C")
+        let mut cmd = Command::new("git");
+        cmd.arg("-C")
             .arg(&self.project_path)
             .arg("rev-parse")
-            .arg("--is-inside-work-tree")
+            .arg("--is-inside-work-tree");
+        hide_console_window(&mut cmd);
+        let output = cmd
             .output()
             .await
             .map_err(|e| format!("Failed to run git: {e}"))?;

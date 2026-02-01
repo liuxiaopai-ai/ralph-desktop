@@ -8,6 +8,12 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateStatus {
@@ -385,7 +391,9 @@ pub async fn apply_pending_update() -> storage::Result<()> {
 
         #[cfg(target_os = "windows")]
         {
-            let _ = std::process::Command::new(&file_path).spawn();
+            let mut cmd = std::process::Command::new(&file_path);
+            cmd.creation_flags(CREATE_NO_WINDOW);
+            let _ = cmd.spawn();
         }
 
         #[cfg(target_os = "linux")]

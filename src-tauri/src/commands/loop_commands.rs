@@ -1,4 +1,5 @@
 use super::*;
+use crate::adapters::hide_console_window;
 use crate::engine::{LoopEngine, LoopEvent, CODEX_GIT_REPO_CHECK_REQUIRED};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -161,9 +162,10 @@ fn ensure_autodecide_prompt(task: &mut TaskConfig) -> bool {
 }
 
 async fn init_git_repo(project_path: &PathBuf) -> Result<(), String> {
-    let output = Command::new("git")
-        .arg("init")
-        .current_dir(project_path)
+    let mut cmd = Command::new("git");
+    cmd.arg("init").current_dir(project_path);
+    hide_console_window(&mut cmd);
+    let output = cmd
         .output()
         .await
         .map_err(|e| format!("Failed to run git: {}", e))?;
@@ -177,12 +179,13 @@ async fn init_git_repo(project_path: &PathBuf) -> Result<(), String> {
 }
 
 async fn is_git_repo(project_path: &PathBuf) -> Result<bool, String> {
-    let output = Command::new("git")
-        .arg("-C")
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
         .arg(project_path)
         .arg("rev-parse")
-        .arg("--is-inside-work-tree")
-        .output()
+        .arg("--is-inside-work-tree");
+    hide_console_window(&mut cmd);
+    let output = cmd.output()
         .await
         .map_err(|e| format!("Failed to run git: {}", e))?;
 

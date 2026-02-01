@@ -1,4 +1,5 @@
 use super::*;
+use crate::adapters::hide_console_window;
 use crate::engine::ai_brainstorm::{run_ai_brainstorm, AiBrainstormResponse, ConversationMessage};
 use crate::security;
 use std::path::PathBuf;
@@ -142,11 +143,13 @@ pub async fn update_task_auto_init(
 pub async fn check_project_git_repo(project_id: String) -> Result<bool, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-    let output = Command::new("git")
-        .arg("-C")
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
         .arg(&state.path)
         .arg("rev-parse")
-        .arg("--is-inside-work-tree")
+        .arg("--is-inside-work-tree");
+    hide_console_window(&mut cmd);
+    let output = cmd
         .output()
         .await
         .map_err(|e| format!("Failed to run git: {}", e))?;
@@ -164,10 +167,12 @@ pub async fn check_project_git_repo(project_id: String) -> Result<bool, String> 
 pub async fn init_project_git_repo(project_id: String) -> Result<(), String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-    let output = std::process::Command::new("git")
-        .arg("init")
-        .current_dir(state.path)
+    let mut cmd = Command::new("git");
+    cmd.arg("init").current_dir(state.path);
+    hide_console_window(&mut cmd);
+    let output = cmd
         .output()
+        .await
         .map_err(|e| format!("Failed to run git: {}", e))?;
 
     if output.status.success() {
