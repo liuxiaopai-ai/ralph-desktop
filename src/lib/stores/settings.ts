@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import type { GlobalConfig, CliInfo } from '../types';
 
 const defaultConfig: GlobalConfig = {
@@ -24,11 +24,9 @@ export function updateConfig(newConfig: GlobalConfig) {
 export function setAvailableClis(clis: CliInfo[]) {
   availableClis.set(clis);
   // Also verify if current defaultCli is actually available
-  config.subscribe(c => {
-    if (clis.length > 0 && !clis.find(cli => cli.name.toLowerCase().includes(c.defaultCli))) {
-      // If configured CLI is not available, fallback to the first available one
-      // This handles the case where user might have "codex" configured but only "claude" installed
-      // However, we should be careful not to overwrite user preference if they are just temporarily missing a tool
-    }
-  })();
+  // Check if current defaultCli is available
+  const current = get(config);
+  if (clis.length > 0 && !clis.find(cli => cli.cliType === current.defaultCli)) {
+    // Logic to update default could go here if desired, but for now we just keeping it safe
+  }
 }

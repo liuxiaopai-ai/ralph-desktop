@@ -65,30 +65,57 @@
       let thinkingBlock: ExtendedLogEntry | null = null;
 
       for (const log of logs) {
-        if (log.content.includes("<thinking>")) {
-          if (thinkingBlock) result.push(thinkingBlock);
-          thinkingBlock = {
-            ...log,
-            content: log.content.replace("<thinking>", ""),
-            isThinking: true,
-            lines: [],
-          };
-        } else if (thinkingBlock) {
-          if (log.content.includes("</thinking>")) {
-            if (thinkingBlock.lines) {
-              thinkingBlock.lines.push({
-                ...log,
-                content: log.content.replace("</thinking>", ""),
-              });
-            }
+        let content = log.content;
+
+        // Case 1: Start of thinking block
+        if (content.includes("<thinking>")) {
+          // If we were already in a block, close it and push (shouldn't happen ideally but for safety)
+          if (thinkingBlock) {
             result.push(thinkingBlock);
+          }
+
+          // Check if it closes on the same line
+          if (content.includes("</thinking>")) {
+            // It's a single line thinking block
+            const parts = content.split(/<\/?thinking>/);
+            // parts might be ["prefix", "thinking content", "suffix"] or similar
+            // For simplicity, we just strip the tags and show it as a thinking block
+            result.push({
+              ...log,
+              content: content.replace(/<\/?thinking>/g, ""),
+              isThinking: true,
+              lines: [],
+            });
             thinkingBlock = null;
           } else {
-            if (thinkingBlock.lines) {
-              thinkingBlock.lines.push(log);
-            }
+            // Multi-line start
+            thinkingBlock = {
+              ...log,
+              content: content.replace("<thinking>", ""),
+              isThinking: true,
+              lines: [],
+            };
           }
-        } else {
+        }
+        // Case 2: End of thinking block
+        else if (thinkingBlock && content.includes("</thinking>")) {
+          if (thinkingBlock.lines) {
+            thinkingBlock.lines.push({
+              ...log,
+              content: content.replace("</thinking>", ""),
+            });
+          }
+          result.push(thinkingBlock);
+          thinkingBlock = null;
+        }
+        // Case 3: Inside thinking block
+        else if (thinkingBlock) {
+          if (thinkingBlock.lines) {
+            thinkingBlock.lines.push(log);
+          }
+        }
+        // Case 4: Normal log
+        else {
           result.push(log);
         }
       }
@@ -103,7 +130,7 @@
             <summary
               class="cursor-pointer text-vscode-accent text-xs font-bold select-none hover:text-vscode-accent-hover flex items-center gap-2"
             >
-              <span>🧠 Thinking Process</span>
+              <span>{$_("log.thinkingProcess")}</span>
             </summary>
             <div class="mt-1 opacity-80">
               <div class="flex gap-2 py-0.5 text-xs text-vscode-muted">

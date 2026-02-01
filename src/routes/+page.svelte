@@ -9,9 +9,18 @@
     updateCurrentProject,
   } from "$lib/stores/projects";
   import { _ } from "svelte-i18n";
-  import { loopStates, getLoopState, resetLoop } from "$lib/stores/loop";
+  import {
+    loopStates,
+    getLoopState,
+    resetLoop,
+    addLog,
+    setIteration,
+    setError,
+    setStatus,
+  } from "$lib/stores/loop";
   import { config, availableClis } from "$lib/stores/settings";
   import * as api from "$lib/services/tauri";
+  import { open } from "@tauri-apps/plugin-dialog";
   import type { ProjectState, CliType } from "$lib/types";
   import ProjectList from "$lib/components/ProjectList.svelte";
   import TaskDetail from "$lib/components/TaskDetail.svelte";
@@ -119,9 +128,6 @@
       // But verify imports first. resetLoop is imported. addLog needs to be imported.
 
       resetLoop(p.id);
-      const { addLog, setIteration, setError, setStatus } = await import(
-        "$lib/stores/loop"
-      );
       logEntries.forEach((entry) => addLog(p.id, entry));
 
       if (p.execution) {
@@ -151,7 +157,6 @@
         selected = e2eProjectPath || `/tmp/ralph-e2e-${ts}`;
       } else {
         // Use Tauri dialog to select directory
-        const { open } = await import("@tauri-apps/plugin-dialog");
         selected = (await open({
           directory: true,
           multiple: false,

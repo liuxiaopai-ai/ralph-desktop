@@ -160,10 +160,10 @@ fn collect_search_paths() -> Vec<PathBuf> {
     }
 
     // DEBUG LOGGING
-    println!("DEBUG: Collected search paths:");
-    for p in &paths {
-        println!("  - {:?}", p);
-    }
+    // println!("DEBUG: Collected search paths:");
+    // for p in &paths {
+    //     println!("  - {:?}", p);
+    // }
     paths
 }
 
@@ -215,7 +215,19 @@ pub fn command_for_cli(exe: &str, args: &[String], working_dir: &Path) -> Comman
         if exe.ends_with(".cmd") || exe.ends_with(".bat") {
             let mut cmd = Command::new("cmd");
             cmd.arg("/C");
-            cmd.arg(exe);
+            // Quote the executable path to prevent injection if it contains spaces or special chars
+            // Note: In Windows cmd /c, usually the whole string needs careful quoting,
+            // but here we are passing it as a single argument to Rust's Command which handles escaping.
+            // However, cmd /c behavior is tricky. The safer way is often just passing it.
+            // But reviewer suggested quoting. Let's try to just pass it as is because Rust Command arg escaping usually works.
+            // Wait, the reviewer specifically said: "cmd.arg(exe); // ⚠️ if exe contains special chars..."
+            // "Suggestion: Quote wrapper or validation."
+            // Since Rust's `Command::arg` passes the argument to CreateProcess, it handles spaces.
+            // But `cmd /C` parses the rest of the command line.
+            // If `exe` is `C:\Program Files\foo.bat`, `cmd /C C:\Program Files\foo.bat` fails.
+            // It needs to be `cmd /C "C:\Program Files\foo.bat"`.
+            // So we should wrap it in quotes manually if we are passing it to /C.
+            cmd.arg(format!("\"{}\"", exe));
             cmd.args(args);
             cmd.current_dir(working_dir);
             cmd
@@ -399,18 +411,19 @@ pub fn resolve_cli_path(binary: &str) -> Option<String> {
     }
 
     let path_env = build_path_env()?;
-    println!(
-        "DEBUG: Resolving CLI path for '{}' using PATH: {:?}",
-        binary, path_env
-    );
+
+    // println!(
+    //     "DEBUG: Resolving CLI path for '{}' using PATH: {:?}",
+    //     binary, path_env
+    // );
 
     match which::which_in(binary, Some(&path_env), cwd) {
         Ok(p) => {
-            println!("DEBUG: Found '{}' at {:?}", binary, p);
+            // println!("DEBUG: Found '{}' at {:?}", binary, p);
             Option::from(p.to_string_lossy().to_string())
         }
-        Err(e) => {
-            println!("DEBUG: Failed to find '{}': {}", binary, e);
+        Err(_e) => {
+            // println!("DEBUG: Failed to find '{}': {}", binary, e);
             None
         }
     }

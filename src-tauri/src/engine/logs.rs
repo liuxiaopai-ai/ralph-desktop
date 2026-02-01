@@ -79,7 +79,7 @@ impl LogManager {
 
     /// Retrieve the content of the latest log session
     pub fn get_latest_session_log(&self) -> Result<Vec<String>, String> {
-        let project_dir = ensure_project_dir(&self.project_id).map_err(|e| e.to_string())?;
+        let project_dir = get_project_dir(&self.project_id).map_err(|e| e.to_string())?;
         let logs_dir = project_dir.join("logs");
 
         if !logs_dir.exists() {
