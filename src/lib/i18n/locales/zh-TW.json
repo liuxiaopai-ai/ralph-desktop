@@ -13,6 +13,7 @@
   },
   "common": {
     "delete": "刪除",
+    "sessions": "工作階段",
     "loading": "載入中..."
   },
   "shortcuts": {

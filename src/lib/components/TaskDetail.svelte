@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { ProjectState } from '$lib/types';
-  import type { LoopStoreState } from '$lib/stores/loop';
-  import * as api from '$lib/services/tauri';
-  import { startLoopWithGuard } from '$lib/services/loopStart';
-  import { updateCurrentProject } from '$lib/stores/projects';
-  import { _ } from 'svelte-i18n';
-  import LogViewer from './LogViewer.svelte';
-  import PromptEditor from './PromptEditor.svelte';
+  import type { ProjectState } from "$lib/types";
+  import type { LoopStoreState } from "$lib/stores/loop";
+  import * as api from "$lib/services/tauri";
+  import { startLoopWithGuard } from "$lib/services/loopStart";
+  import { updateCurrentProject } from "$lib/stores/projects";
+  import { _ } from "svelte-i18n";
+  import LogViewer from "./LogViewer.svelte";
+  import PromptEditor from "./PromptEditor.svelte";
 
   interface Props {
     project: ProjectState;
@@ -21,57 +21,109 @@
   let autoInitGit = $state(true);
   let isGitRepo = $state(false);
   let lastGitCheckId = $state<string | null>(null);
+  let showContinueInput = $state(false);
+  let continuePrompt = $state("");
   const cliLabels: Record<string, string> = {
-    claude: 'Claude Code',
-    codex: 'Codex',
-    opencode: 'OpenCode'
+    claude: "Claude Code",
+    codex: "Codex",
+    opencode: "OpenCode",
   };
 
   const statusConfig = $derived({
-    ready: { icon: '⚪', color: 'text-vscode-muted', label: $_('task.status.ready') },
-    queued: { icon: '🔵', color: 'text-vscode-info', label: $_('task.status.queued') },
-    running: { icon: '🟢', color: 'text-vscode-success', label: $_('task.status.running') },
-    pausing: { icon: '🟡', color: 'text-vscode-warning', label: $_('task.status.pausing') },
-    paused: { icon: '🟡', color: 'text-vscode-warning', label: $_('task.status.paused') },
-    done: { icon: '✅', color: 'text-vscode-success', label: $_('task.status.done') },
-    partial: { icon: '🔵', color: 'text-vscode-info', label: $_('task.status.partial') },
-    failed: { icon: '❌', color: 'text-vscode-error', label: $_('task.status.failed') },
-    cancelled: { icon: '🚫', color: 'text-vscode-muted', label: $_('task.status.cancelled') },
-    brainstorming: { icon: '💭', color: 'text-vscode-accent', label: $_('task.status.brainstorming') }
+    ready: {
+      icon: "⚪",
+      color: "text-vscode-muted",
+      label: $_("task.status.ready"),
+    },
+    queued: {
+      icon: "🔵",
+      color: "text-vscode-info",
+      label: $_("task.status.queued"),
+    },
+    running: {
+      icon: "🟢",
+      color: "text-vscode-success",
+      label: $_("task.status.running"),
+    },
+    pausing: {
+      icon: "🟡",
+      color: "text-vscode-warning",
+      label: $_("task.status.pausing"),
+    },
+    paused: {
+      icon: "🟡",
+      color: "text-vscode-warning",
+      label: $_("task.status.paused"),
+    },
+    done: {
+      icon: "✅",
+      color: "text-vscode-success",
+      label: $_("task.status.done"),
+    },
+    partial: {
+      icon: "🔵",
+      color: "text-vscode-info",
+      label: $_("task.status.partial"),
+    },
+    failed: {
+      icon: "❌",
+      color: "text-vscode-error",
+      label: $_("task.status.failed"),
+    },
+    cancelled: {
+      icon: "🚫",
+      color: "text-vscode-muted",
+      label: $_("task.status.cancelled"),
+    },
+    brainstorming: {
+      icon: "💭",
+      color: "text-vscode-accent",
+      label: $_("task.status.brainstorming"),
+    },
   });
 
   const status = $derived(statusConfig[project.status] || statusConfig.ready);
-  const isRunning = $derived(project.status === 'running');
-  const isPaused = $derived(project.status === 'paused');
-  const isPausing = $derived(project.status === 'pausing');
-  const isDone = $derived(project.status === 'done');
-  const isPartial = $derived(project.status === 'partial');
-  const isFailed = $derived(project.status === 'failed');
+  const isRunning = $derived(project.status === "running");
+  const isPaused = $derived(project.status === "paused");
+  const isPausing = $derived(project.status === "pausing");
+  const isDone = $derived(project.status === "done");
+  const isPartial = $derived(project.status === "partial");
+  const isFailed = $derived(project.status === "failed");
   const showStatusBanner = $derived(isDone || isFailed || isPartial);
   const showStatusCard = $derived(isDone || isFailed || isPartial);
-  const canStart = $derived(['ready', 'failed', 'cancelled', 'partial'].includes(project.status));
+  const canStart = $derived(
+    ["ready", "failed", "cancelled", "partial"].includes(project.status),
+  );
   const showGitInit = $derived(canStart && !isGitRepo && !!project.task);
   const autoCommitEnabled = $derived(isGitRepo || autoInitGit);
   const showAutoCommit = $derived(canStart && !!project.task);
-  const summaryText = $derived(loopState.summary || $_('task.summaryFallback'));
+  const summaryText = $derived(loopState.summary || $_("task.summaryFallback"));
   const elapsedText = $derived(formatDuration(loopState.elapsedMs));
-  const maxIterations = $derived(project.task?.maxIterations || loopState.maxIterations || 0);
+  const maxIterations = $derived(
+    project.task?.maxIterations || loopState.maxIterations || 0,
+  );
 
   const badgeConfig = $derived({
-    done: 'bg-vscode-success text-white border-vscode-success shadow-md shadow-black/20 animate-pulse',
-    partial: 'bg-vscode-info text-white border-vscode-info shadow-md shadow-black/20',
-    failed: 'bg-vscode-error text-white border-vscode-error shadow-md shadow-black/20 animate-pulse',
-    running: 'bg-vscode-panel text-vscode-success border-vscode-success',
-    pausing: 'bg-vscode-panel text-vscode-warning border-vscode-warning',
-    paused: 'bg-vscode-panel text-vscode-warning border-vscode-warning',
-    queued: 'bg-vscode-panel text-vscode-info border-vscode',
-    ready: 'bg-vscode-panel text-vscode-muted border-vscode',
-    cancelled: 'bg-vscode-panel text-vscode-muted border-vscode',
-    brainstorming: 'bg-vscode-panel text-vscode-accent border-vscode'
+    done: "bg-vscode-success text-white border-vscode-success shadow-md shadow-black/20 animate-pulse",
+    partial:
+      "bg-vscode-info text-white border-vscode-info shadow-md shadow-black/20",
+    failed:
+      "bg-vscode-error text-white border-vscode-error shadow-md shadow-black/20 animate-pulse",
+    running: "bg-vscode-panel text-vscode-success border-vscode-success",
+    pausing: "bg-vscode-panel text-vscode-warning border-vscode-warning",
+    paused: "bg-vscode-panel text-vscode-warning border-vscode-warning",
+    queued: "bg-vscode-panel text-vscode-info border-vscode",
+    ready: "bg-vscode-panel text-vscode-muted border-vscode",
+    cancelled: "bg-vscode-panel text-vscode-muted border-vscode",
+    brainstorming: "bg-vscode-panel text-vscode-accent border-vscode",
   });
 
   const bannerClass = $derived(
-    isDone ? 'bg-vscode-success' : isPartial ? 'bg-vscode-info' : 'bg-vscode-error'
+    isDone
+      ? "bg-vscode-success"
+      : isPartial
+        ? "bg-vscode-info"
+        : "bg-vscode-error",
   );
 
   $effect(() => {
@@ -88,7 +140,7 @@
     try {
       isGitRepo = await api.checkProjectGitRepo(projectId);
     } catch (error) {
-      console.error('Failed to check git repo:', error);
+      console.error("Failed to check git repo:", error);
       isGitRepo = false;
     }
   }
@@ -100,7 +152,7 @@
       const updated = await api.updateTaskAutoInit(project.id, next);
       updateCurrentProject(updated);
     } catch (error) {
-      console.error('Failed to update auto init git:', error);
+      console.error("Failed to update auto init git:", error);
       autoInitGit = !next;
     }
   }
@@ -112,7 +164,7 @@
       const updated = await api.updateTaskAutoCommit(project.id, next);
       updateCurrentProject(updated);
     } catch (error) {
-      console.error('Failed to update auto commit:', error);
+      console.error("Failed to update auto commit:", error);
       autoCommit = !next;
     }
   }
@@ -125,13 +177,13 @@
         const updated = await api.setProjectSkipGitRepoCheck(project.id, false);
         updateCurrentProject(updated);
         isGitRepo = true;
-      } else if (showGitInit && !autoInitGit && project.task?.cli === 'codex') {
+      } else if (showGitInit && !autoInitGit && project.task?.cli === "codex") {
         const updated = await api.setProjectSkipGitRepoCheck(project.id, true);
         updateCurrentProject(updated);
       }
       await startLoopWithGuard(project.id);
     } catch (error) {
-      console.error('Failed to start loop:', error);
+      console.error("Failed to start loop:", error);
     } finally {
       starting = false;
     }
@@ -141,7 +193,7 @@
     try {
       await api.pauseLoop(project.id);
     } catch (error) {
-      console.error('Failed to pause loop:', error);
+      console.error("Failed to pause loop:", error);
     }
   }
 
@@ -149,41 +201,41 @@
     try {
       await api.resumeLoop(project.id);
     } catch (error) {
-      console.error('Failed to resume loop:', error);
+      console.error("Failed to resume loop:", error);
     }
   }
 
   async function handleStop() {
-    if (confirm($_('task.stopConfirm'))) {
+    if (confirm($_("task.stopConfirm"))) {
       try {
         await api.stopLoop(project.id);
       } catch (error) {
-        console.error('Failed to stop loop:', error);
+        console.error("Failed to stop loop:", error);
       }
     }
   }
 
   function formatDuration(ms: number | null): string {
-    if (ms === null || Number.isNaN(ms)) return $_('task.durationUnknown');
+    if (ms === null || Number.isNaN(ms)) return $_("task.durationUnknown");
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     if (hours > 0) {
-      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   }
 
   function scrollToLogs() {
     const el = document.querySelector('[data-testid="log-viewer"]');
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
   async function handleOpenProject() {
-    const opener = await import('@tauri-apps/plugin-opener');
+    const opener = await import("@tauri-apps/plugin-opener");
     await opener.openPath(project.path);
   }
 
@@ -192,7 +244,7 @@
   }
 
   async function handleCopyError() {
-    const message = loopState.lastError || $_('task.errorFallback');
+    const message = loopState.lastError || $_("task.errorFallback");
     await navigator.clipboard.writeText(message);
   }
 
@@ -200,10 +252,10 @@
     const current = project.task?.maxIterations || loopState.maxIterations || 0;
     const suggested = Math.max(current + 5, 1);
     const input = prompt(
-      $_('task.actions.increaseIterationsPrompt', {
-        values: { current, suggested }
+      $_("task.actions.increaseIterationsPrompt", {
+        values: { current, suggested },
       }),
-      String(suggested)
+      String(suggested),
     );
     if (!input) return;
     const next = Number.parseInt(input, 10);
@@ -213,34 +265,73 @@
       updateCurrentProject(updated);
       await handleStart();
     } catch (error) {
-      console.error('Failed to update max iterations:', error);
+      console.error("Failed to update max iterations:", error);
+    }
+  }
+
+  async function handleContinueConversation() {
+    if (!continuePrompt.trim()) return;
+    starting = true;
+    try {
+      // Update the task prompt with the new continuation
+      const currentPrompt = project.task?.prompt || "";
+      const newPrompt = `${currentPrompt}\n\n---\n\n用户继续对话:\n${continuePrompt}`;
+      await api.updateTaskPrompt(project.id, newPrompt);
+
+      // Reset iteration count and restart
+      const updated = await api.updateTaskMaxIterations(
+        project.id,
+        (project.task?.maxIterations || 3) + 3,
+      );
+      updateCurrentProject(updated);
+
+      showContinueInput = false;
+      continuePrompt = "";
+      await startLoopWithGuard(project.id);
+    } catch (error) {
+      console.error("Failed to continue conversation:", error);
+    } finally {
+      starting = false;
     }
   }
 </script>
 
 <div class="flex-1 flex flex-col overflow-hidden">
   {#if showStatusBanner}
-    <div class="px-4 py-3 border-b border-vscode {bannerClass} text-white" data-testid="task-status-banner">
+    <div
+      class="px-4 py-3 border-b border-vscode {bannerClass} text-white"
+      data-testid="task-status-banner"
+    >
       <div class="flex items-start justify-between gap-4">
         <div class="flex items-start gap-3 min-w-0">
-          <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-xl flex-shrink-0">
+          <div
+            class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-xl flex-shrink-0"
+          >
             {#if isDone}✓{:else if isPartial}✓{:else}✕{/if}
           </div>
           <div class="min-w-0">
             <div class="text-sm font-semibold">
               {isDone
-                ? $_('task.banner.completedTitle')
+                ? $_("task.banner.completedTitle")
                 : isPartial
-                  ? $_('task.banner.partialTitle')
-                  : $_('task.banner.failedTitle')}
+                  ? $_("task.banner.partialTitle")
+                  : $_("task.banner.failedTitle")}
             </div>
             <div class="text-xs opacity-90">
-              {$_('task.banner.meta', { values: { duration: elapsedText, current: loopState.currentIteration, max: maxIterations } })}
+              {$_("task.banner.meta", {
+                values: {
+                  duration: elapsedText,
+                  current: loopState.currentIteration,
+                  max: maxIterations,
+                },
+              })}
             </div>
             {#if isDone}
               <div class="text-xs opacity-90 mt-1 truncate">{summaryText}</div>
             {:else if isPartial}
-              <div class="text-xs opacity-90 mt-1">{$_('task.banner.partialMessage')}</div>
+              <div class="text-xs opacity-90 mt-1">
+                {$_("task.banner.partialMessage")}
+              </div>
             {/if}
           </div>
         </div>
@@ -249,46 +340,52 @@
             class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
             onclick={scrollToLogs}
           >
-            {$_('task.actions.viewLogs')}
+            {$_("task.actions.viewLogs")}
           </button>
           {#if isDone}
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleOpenProject}
             >
-              {$_('task.actions.openProject')}
+              {$_("task.actions.openProject")}
             </button>
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleCopySummary}
             >
-              {$_('task.actions.copySummary')}
+              {$_("task.actions.copySummary")}
+            </button>
+            <button
+              class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition font-semibold"
+              onclick={() => (showContinueInput = true)}
+            >
+              {$_("task.actions.continueConversation")}
             </button>
           {:else if isPartial}
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleIncreaseIterations}
             >
-              {$_('task.actions.increaseIterations')}
+              {$_("task.actions.increaseIterations")}
             </button>
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleOpenProject}
             >
-              {$_('task.actions.useCurrent')}
+              {$_("task.actions.useCurrent")}
             </button>
           {:else}
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleCopyError}
             >
-              {$_('task.actions.copyError')}
+              {$_("task.actions.copyError")}
             </button>
             <button
               class="px-3 py-1.5 text-xs rounded bg-white/15 hover:bg-white/25 transition"
               onclick={handleStart}
             >
-              {$_('task.actions.retry')}
+              {$_("task.actions.retry")}
             </button>
           {/if}
         </div>
@@ -308,7 +405,9 @@
       </div>
       <div class="flex items-center gap-2">
         <div
-          class="px-3 py-1.5 rounded-full border text-sm font-semibold flex items-center gap-2 {badgeConfig[project.status] || badgeConfig.ready}"
+          class="px-3 py-1.5 rounded-full border text-sm font-semibold flex items-center gap-2 {badgeConfig[
+            project.status
+          ] || badgeConfig.ready}"
           data-testid="task-status"
           data-status={project.status}
         >
@@ -324,27 +423,54 @@
         <div class="flex items-center justify-between mb-2">
           <div class="grid grid-cols-3 gap-4 text-sm flex-1">
             <div>
-              <span class="text-vscode-muted">{$_('task.cli')}:</span>
-              <span class="ml-2 text-vscode font-medium">
-                {cliLabels[project.task.cli] || project.task.cli}
-              </span>
+              <span class="text-vscode-muted">{$_("task.cli")}:</span>
+              {#if canStart}
+                <select
+                  class="ml-2 text-vscode font-medium bg-vscode-input border border-vscode rounded px-2 py-0.5 text-sm cursor-pointer hover:bg-vscode-hover"
+                  value={project.task.cli}
+                  onchange={async (e) => {
+                    const newCli = (e.target as HTMLSelectElement).value as
+                      | "claude"
+                      | "codex"
+                      | "opencode";
+                    try {
+                      const updated = await api.updateTaskCli(
+                        project.id,
+                        newCli,
+                      );
+                      updateCurrentProject(updated);
+                    } catch (error) {
+                      console.error("Failed to update CLI:", error);
+                    }
+                  }}
+                >
+                  <option value="claude">Claude Code</option>
+                  <option value="codex">Codex</option>
+                  <option value="opencode">OpenCode</option>
+                </select>
+              {:else}
+                <span class="ml-2 text-vscode font-medium">
+                  {cliLabels[project.task.cli] || project.task.cli}
+                </span>
+              {/if}
             </div>
             <div>
-              <span class="text-vscode-muted">{$_('task.iteration')}:</span>
+              <span class="text-vscode-muted">{$_("task.iteration")}:</span>
               <span class="ml-2 text-vscode font-medium">
                 {loopState.currentIteration} / {project.task.maxIterations}
               </span>
             </div>
             <div>
-              <span class="text-vscode-muted">{$_('task.statusLabel')}:</span>
-              <span class="ml-2 {status.color} font-medium">{status.label}</span>
+              <span class="text-vscode-muted">{$_("task.statusLabel")}:</span>
+              <span class="ml-2 {status.color} font-medium">{status.label}</span
+              >
             </div>
           </div>
           <button
             class="ml-4 px-3 py-1 text-sm bg-vscode-panel border border-vscode hover:bg-vscode-hover rounded text-vscode-dim"
-            onclick={() => showPrompt = !showPrompt}
+            onclick={() => (showPrompt = !showPrompt)}
           >
-            {showPrompt ? $_('task.hidePrompt') : $_('task.showPrompt')}
+            {showPrompt ? $_("task.hidePrompt") : $_("task.showPrompt")}
           </button>
         </div>
         {#if showPrompt}
@@ -361,29 +487,41 @@
     <LogViewer logs={loopState.logs} showHeader={showStatusCard}>
       <svelte:fragment slot="header">
         {#if showStatusCard}
-          <div class="bg-vscode-panel border border-vscode rounded-lg p-4 shadow-md">
+          <div
+            class="bg-vscode-panel border border-vscode rounded-lg p-4 shadow-md"
+          >
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-2">
-                <span class="text-lg">{isDone ? '✅' : isPartial ? '🔵' : '❌'}</span>
+                <span class="text-lg"
+                  >{isDone ? "✅" : isPartial ? "🔵" : "❌"}</span
+                >
                 <div class="text-sm font-semibold text-vscode">
                   {isDone
-                    ? $_('task.statusCard.completedTitle')
+                    ? $_("task.statusCard.completedTitle")
                     : isPartial
-                      ? $_('task.statusCard.partialTitle')
-                      : $_('task.statusCard.failedTitle')}
+                      ? $_("task.statusCard.partialTitle")
+                      : $_("task.statusCard.failedTitle")}
                 </div>
               </div>
               <div class="text-xs text-vscode-muted">
-                {$_('task.banner.meta', { values: { duration: elapsedText, current: loopState.currentIteration, max: maxIterations } })}
+                {$_("task.banner.meta", {
+                  values: {
+                    duration: elapsedText,
+                    current: loopState.currentIteration,
+                    max: maxIterations,
+                  },
+                })}
               </div>
             </div>
             {#if isDone}
               <div class="text-sm text-vscode mt-3">{summaryText}</div>
             {:else if isPartial}
-              <div class="text-sm text-vscode mt-3">{$_('task.statusCard.partialMessage')}</div>
+              <div class="text-sm text-vscode mt-3">
+                {$_("task.statusCard.partialMessage")}
+              </div>
             {:else}
               <div class="text-sm text-vscode-error mt-3">
-                {loopState.lastError || $_('task.errorFallback')}
+                {loopState.lastError || $_("task.errorFallback")}
               </div>
             {/if}
           </div>
@@ -397,7 +535,9 @@
     <div class="flex items-center justify-between">
       <div class="flex flex-col gap-3">
         {#if showGitInit}
-          <div class="rounded-lg border border-vscode bg-vscode-panel px-3 py-2 text-xs text-vscode">
+          <div
+            class="rounded-lg border border-vscode bg-vscode-panel px-3 py-2 text-xs text-vscode"
+          >
             <div class="flex items-start gap-2">
               <input
                 id={`auto-init-git-${project.id}`}
@@ -407,17 +547,24 @@
                 onchange={handleAutoInitChange}
               />
               <div class="min-w-0">
-                <label for={`auto-init-git-${project.id}`} class="text-vscode font-medium">
-                  {$_('task.autoInitGit.label')}
+                <label
+                  for={`auto-init-git-${project.id}`}
+                  class="text-vscode font-medium"
+                >
+                  {$_("task.autoInitGit.label")}
                 </label>
-                <div class="text-vscode-muted mt-1">{$_('task.autoInitGit.description')}</div>
+                <div class="text-vscode-muted mt-1">
+                  {$_("task.autoInitGit.description")}
+                </div>
               </div>
             </div>
           </div>
         {/if}
 
         {#if showAutoCommit}
-          <div class={`mb-3 rounded-lg border border-vscode bg-vscode-panel px-3 py-2 text-xs text-vscode ${!autoCommitEnabled ? "opacity-50" : ""}`}>
+          <div
+            class={`mb-3 rounded-lg border border-vscode bg-vscode-panel px-3 py-2 text-xs text-vscode ${!autoCommitEnabled ? "opacity-50" : ""}`}
+          >
             <div class="flex items-start gap-2">
               <input
                 id={`auto-commit-${project.id}`}
@@ -428,13 +575,22 @@
                 onchange={handleAutoCommitChange}
               />
               <div class="min-w-0">
-                <label for={`auto-commit-${project.id}`} class="text-vscode font-medium">
-                  {$_('task.autoCommit.label')}
+                <label
+                  for={`auto-commit-${project.id}`}
+                  class="text-vscode font-medium"
+                >
+                  {$_("task.autoCommit.label")}
                 </label>
-                <div class="text-vscode-muted mt-1">{$_('task.autoCommit.description')}</div>
-                <div class="text-vscode-muted mt-1">{$_('task.autoCommit.note')}</div>
+                <div class="text-vscode-muted mt-1">
+                  {$_("task.autoCommit.description")}
+                </div>
+                <div class="text-vscode-muted mt-1">
+                  {$_("task.autoCommit.note")}
+                </div>
                 {#if !autoCommitEnabled}
-                  <div class="text-vscode-muted mt-1">{$_('task.autoCommit.requiresGit')}</div>
+                  <div class="text-vscode-muted mt-1">
+                    {$_("task.autoCommit.requiresGit")}
+                  </div>
                 {/if}
               </div>
             </div>
@@ -442,59 +598,103 @@
         {/if}
 
         <div class="flex gap-2">
-        {#if canStart}
-          <button
-            class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
-            onclick={handleStart}
-            disabled={starting}
-            data-testid="task-start"
-          >
-            <span>▶</span>
-            <span>{starting ? $_('task.starting') : $_('task.start')}</span>
-          </button>
-        {/if}
+          {#if canStart}
+            <button
+              class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+              onclick={handleStart}
+              disabled={starting}
+              data-testid="task-start"
+            >
+              <span>▶</span>
+              <span>{starting ? $_("task.starting") : $_("task.start")}</span>
+            </button>
+          {/if}
 
-        {#if isRunning}
-          <button
-            class="px-4 py-2 bg-vscode-warning text-black rounded-lg flex items-center gap-2 hover:opacity-90"
-            onclick={handlePause}
-          data-testid="task-pause"
-          >
-            <span>⏸</span>
-            <span>{$_('task.pause')}</span>
-          </button>
-        {/if}
+          {#if isRunning}
+            <button
+              class="px-4 py-2 bg-vscode-warning text-black rounded-lg flex items-center gap-2 hover:opacity-90"
+              onclick={handlePause}
+              data-testid="task-pause"
+            >
+              <span>⏸</span>
+              <span>{$_("task.pause")}</span>
+            </button>
+          {/if}
 
-        {#if isPaused}
-          <button
-            class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2"
-            onclick={handleResume}
-          data-testid="task-resume"
-          >
-            <span>▶</span>
-            <span>{$_('task.resume')}</span>
-          </button>
-        {/if}
+          {#if isPaused}
+            <button
+              class="px-4 py-2 bg-vscode-accent bg-vscode-accent-hover text-white rounded-lg flex items-center gap-2"
+              onclick={handleResume}
+              data-testid="task-resume"
+            >
+              <span>▶</span>
+              <span>{$_("task.resume")}</span>
+            </button>
+          {/if}
 
-        {#if isRunning || isPaused || isPausing}
-          <button
-            class="px-4 py-2 bg-vscode-error text-white rounded-lg flex items-center gap-2 hover:opacity-90"
-            onclick={handleStop}
-          data-testid="task-stop"
-          >
-            <span>⏹</span>
-            <span>{$_('task.stop')}</span>
-          </button>
-        {/if}
-      </div>
-
+          {#if isRunning || isPaused || isPausing}
+            <button
+              class="px-4 py-2 bg-vscode-error text-white rounded-lg flex items-center gap-2 hover:opacity-90"
+              onclick={handleStop}
+              data-testid="task-stop"
+            >
+              <span>⏹</span>
+              <span>{$_("task.stop")}</span>
+            </button>
+          {/if}
+        </div>
       </div>
 
       {#if loopState.lastError}
         <div class="text-sm text-vscode-error">
-          {$_('task.errorPrefix')} {loopState.lastError}
+          {$_("task.errorPrefix")}
+          {loopState.lastError}
         </div>
       {/if}
     </div>
   </div>
 </div>
+
+<!-- Continue Conversation Modal -->
+{#if showContinueInput}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div
+      class="bg-vscode-panel border border-vscode rounded-lg p-6 w-[500px] max-w-[90vw] shadow-xl"
+    >
+      <h3 class="text-lg font-semibold text-vscode mb-4">
+        {$_("task.actions.continueConversation")}
+      </h3>
+      <textarea
+        class="w-full h-32 p-3 bg-vscode-input border border-vscode rounded-lg text-vscode resize-none focus:outline-none focus:border-vscode-accent"
+        placeholder={$_("brainstorm.answerPlaceholder")}
+        bind:value={continuePrompt}
+        onkeydown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            handleContinueConversation();
+          }
+          if (e.key === "Escape") {
+            showContinueInput = false;
+          }
+        }}
+      ></textarea>
+      <div class="flex justify-end gap-3 mt-4">
+        <button
+          class="px-4 py-2 text-sm text-vscode-muted hover:text-vscode"
+          onclick={() => (showContinueInput = false)}
+        >
+          {$_("prompt.cancel")}
+        </button>
+        <button
+          class="px-4 py-2 bg-vscode-accent hover:bg-vscode-accent-hover text-white rounded-lg text-sm disabled:opacity-50"
+          onclick={handleContinueConversation}
+          disabled={!continuePrompt.trim() || starting}
+        >
+          {starting ? $_("task.starting") : $_("brainstorm.continueLabel")}
+        </button>
+      </div>
+      <p class="text-xs text-vscode-muted mt-3">
+        Ctrl/Cmd + Enter 提交，Esc 取消
+      </p>
+    </div>
+  </div>
+{/if}

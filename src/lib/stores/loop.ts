@@ -113,3 +113,30 @@ export function setSummary(
 export function clearLogs(projectId: string) {
   updateProjectState(projectId, state => ({ ...state, logs: [] }));
 }
+
+/**
+ * Load loop state from persisted execution data (for restoring after app restart)
+ */
+export function loadFromExecution(
+  projectId: string,
+  status: ProjectStatus,
+  currentIteration: number,
+  maxIterations: number,
+  elapsedMs: number | null,
+  summary: string | null,
+  startedAt: string | null,
+  completedAt: string | null
+) {
+  updateProjectState(projectId, () => ({
+    status,
+    currentIteration,
+    maxIterations,
+    logs: [], // Logs will be loaded separately if needed
+    lastError: null,
+    startedAt: startedAt ? new Date(startedAt) : null,
+    endedAt: completedAt ? new Date(completedAt) : null,
+    elapsedMs,
+    summary,
+    summaryUpdatedAt: summary && completedAt ? new Date(completedAt) : null
+  }));
+}

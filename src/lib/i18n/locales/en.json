@@ -13,6 +13,7 @@
   },
   "common": {
     "delete": "Delete",
+    "sessions": "Sessions",
     "loading": "Loading..."
   },
   "shortcuts": {
@@ -114,7 +115,8 @@
       "retry": "Retry",
       "increaseIterations": "Increase iterations and retry",
       "useCurrent": "Use current result",
-      "increaseIterationsPrompt": "Enter a new max iterations (current {current}, suggested {suggested})"
+      "increaseIterationsPrompt": "Enter a new max iterations (current {current}, suggested {suggested})",
+      "continueConversation": "Continue Conversation"
     },
     "statusCard": {
       "completedTitle": "Task completed",

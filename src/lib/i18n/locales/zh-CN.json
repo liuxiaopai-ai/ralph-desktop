@@ -13,6 +13,7 @@
   },
   "common": {
     "delete": "删除",
+    "sessions": "会话",
     "loading": "加载中..."
   },
   "shortcuts": {
@@ -114,7 +115,8 @@
       "retry": "重新运行",
       "increaseIterations": "增加迭代次数并重试",
       "useCurrent": "使用当前结果",
-      "increaseIterationsPrompt": "输入新的最大迭代次数（当前 {current}，建议 {suggested}）"
+      "increaseIterationsPrompt": "输入新的最大迭代次数（当前 {current}，建议 {suggested}）",
+      "continueConversation": "继续对话"
     },
     "statusCard": {
       "completedTitle": "任务已完成",

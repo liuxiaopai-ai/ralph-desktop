@@ -22,6 +22,13 @@ pub async fn list_projects() -> Result<Vec<ProjectMeta>, String> {
 /// Create a new project
 #[tauri::command]
 pub async fn create_project(path: String, name: String) -> Result<ProjectState, String> {
+    // Check if a project with the same path already exists
+    let index = storage::load_project_index().map_err(|e| e.to_string())?;
+    if let Some(existing) = index.projects.iter().find(|p| p.path == path) {
+        // Return existing project instead of creating duplicate
+        return storage::load_project_state(&existing.id).map_err(|e| e.to_string());
+    }
+
     let now = Utc::now();
     let id = Uuid::new_v4();
 
@@ -53,12 +60,110 @@ pub async fn create_project(path: String, name: String) -> Result<ProjectState, 
         }),
         task: None,
         execution: None,
+        sessions: vec![],
+        active_session_id: None,
         created_at: now,
         updated_at: now,
     };
 
     storage::save_project_state(&state).map_err(|e| e.to_string())?;
 
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+
+    Ok(state)
+}
+
+/// Create a new session for a project
+#[tauri::command]
+pub async fn create_session(project_id: String, name: String) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+    let now = Utc::now();
+
+    // specific migration logic: if no sessions exist but legacy data does, create a "Default Session" first
+    if state.sessions.is_empty() && (state.task.is_some() || state.brainstorm.is_some()) {
+        let default_session = Session {
+            id: Uuid::new_v4(),
+            name: "Default Session".to_string(),
+            status: state.status,
+            brainstorm: state.brainstorm.clone(),
+            task: state.task.clone(),
+            execution: state.execution.clone(),
+            created_at: state.created_at,
+            updated_at: state.updated_at,
+        };
+        state.sessions.push(default_session);
+    }
+
+    // Create new session
+    let new_session = Session {
+        id: Uuid::new_v4(),
+        name,
+        status: ProjectStatus::Brainstorming,
+        brainstorm: Some(BrainstormState {
+            answers: vec![],
+            completed_at: None,
+        }),
+        task: None,
+        execution: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    state.active_session_id = Some(new_session.id);
+    state.sessions.push(new_session);
+
+    // Clear legacy fields to avoid confusion/duplication effectively migrating them to the first session
+    // But we keep them sync'd with the active session for backward compatibility for now?
+    // No, better to fully switch to sessions if we are using them.
+    // However, existing commands use state.task directly. We need to update ALL commands to use active session.
+    // For now, let's just push the session. We will update helper to sync back to top level for legacy support or update all commands.
+    // STRATEGY: Update all commands to look at active_session_id.
+
+    state.updated_at = now;
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+    Ok(state)
+}
+
+/// Switch to a specific session
+#[tauri::command]
+pub async fn switch_session(
+    project_id: String,
+    session_id: String,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let session_uuid = Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    if state.sessions.iter().any(|s| s.id == session_uuid) {
+        state.active_session_id = Some(session_uuid);
+        state.updated_at = Utc::now();
+        storage::save_project_state(&state).map_err(|e| e.to_string())?;
+        Ok(state)
+    } else {
+        Err("Session not found".to_string())
+    }
+}
+
+/// Delete a session
+#[tauri::command]
+pub async fn delete_session(
+    project_id: String,
+    session_id: String,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let session_uuid = Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    state.sessions.retain(|s| s.id != session_uuid);
+
+    // If active session was deleted, switch to the last available one
+    if state.active_session_id == Some(session_uuid) {
+        state.active_session_id = state.sessions.last().map(|s| s.id);
+    }
+
+    state.updated_at = Utc::now();
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
     Ok(state)
 }
 
@@ -91,11 +196,44 @@ pub async fn update_task_max_iterations(
 ) -> Result<ProjectState, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-    let task = state
-        .task
-        .as_mut()
-        .ok_or("No task configured for this project")?;
-    task.max_iterations = max_iterations;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let task = session.task.get_or_insert_with(Default::default);
+        task.max_iterations = max_iterations;
+    } else {
+        let task = state.task.get_or_insert_with(Default::default);
+        task.max_iterations = max_iterations;
+    }
+
+    state.updated_at = Utc::now();
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+    Ok(state)
+}
+
+/// Update CLI for a project's task
+#[tauri::command]
+pub async fn update_task_cli(project_id: String, cli: CliType) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let task = session.task.get_or_insert_with(Default::default);
+        task.cli = cli;
+    } else {
+        let task = state.task.get_or_insert_with(Default::default);
+        task.cli = cli;
+    }
+
     state.updated_at = Utc::now();
     storage::save_project_state(&state).map_err(|e| e.to_string())?;
     Ok(state)
@@ -109,11 +247,20 @@ pub async fn update_task_auto_commit(
 ) -> Result<ProjectState, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-    let task = state
-        .task
-        .as_mut()
-        .ok_or("No task configured for this project")?;
-    task.auto_commit = auto_commit;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let task = session.task.get_or_insert_with(Default::default);
+        task.auto_commit = auto_commit;
+    } else {
+        let task = state.task.get_or_insert_with(Default::default);
+        task.auto_commit = auto_commit;
+    }
+
     state.updated_at = Utc::now();
     storage::save_project_state(&state).map_err(|e| e.to_string())?;
     Ok(state)
@@ -127,11 +274,89 @@ pub async fn update_task_auto_init(
 ) -> Result<ProjectState, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
-    let task = state
-        .task
-        .as_mut()
-        .ok_or("No task configured for this project")?;
-    task.auto_init_git = auto_init_git;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let task = session.task.get_or_insert_with(Default::default);
+        task.auto_init_git = auto_init_git;
+    } else {
+        let task = state.task.get_or_insert_with(Default::default);
+        task.auto_init_git = auto_init_git;
+    }
+
+    state.updated_at = Utc::now();
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+    Ok(state)
+}
+
+/// Update prompt for a project's task (for continuing conversations)
+#[tauri::command]
+pub async fn update_task_prompt(
+    project_id: String,
+    prompt: String,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let task = session.task.get_or_insert_with(Default::default);
+        task.prompt = prompt;
+        session.status = ProjectStatus::Ready;
+        // Also update project-level status if this is the active session (conceptually)
+        state.status = ProjectStatus::Ready;
+    } else {
+        let task = state.task.get_or_insert_with(Default::default);
+        task.prompt = prompt;
+        state.status = ProjectStatus::Ready;
+    }
+
+    state.updated_at = Utc::now();
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+    Ok(state)
+}
+
+/// Save execution summary (for persisting after task completion)
+#[tauri::command]
+pub async fn save_execution_summary(
+    project_id: String,
+    summary: String,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        let exec = session.execution.get_or_insert_with(|| ExecutionState {
+            started_at: Utc::now(),
+            paused_at: None,
+            completed_at: None,
+            current_iteration: 0,
+            last_output: String::new(),
+            last_error: None,
+            last_exit_code: None,
+            elapsed_ms: None,
+            summary: None,
+        });
+        exec.summary = Some(summary);
+    } else {
+        if let Some(ref mut exec) = state.execution {
+            exec.summary = Some(summary);
+        }
+    }
+
     state.updated_at = Utc::now();
     storage::save_project_state(&state).map_err(|e| e.to_string())?;
     Ok(state)
@@ -230,7 +455,18 @@ pub async fn update_project_status(
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
 
-    state.status = status;
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+        session.status = status;
+        state.status = status; // Sync status for project list view
+    } else {
+        state.status = status;
+    }
+
     state.updated_at = Utc::now();
 
     storage::save_project_state(&state).map_err(|e| e.to_string())?;
@@ -270,23 +506,51 @@ pub async fn complete_ai_brainstorm(
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
 
-    // Update brainstorm state
-    if let Some(ref mut brainstorm) = state.brainstorm {
-        brainstorm.completed_at = Some(Utc::now());
+    if let Some(session_id) = state.active_session_id {
+        let session = state
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id)
+            .ok_or("Active session not found")?;
+
+        // Update brainstorm state
+        if let Some(ref mut brainstorm) = session.brainstorm {
+            brainstorm.completed_at = Some(Utc::now());
+        }
+
+        // Set task config
+        session.task = Some(TaskConfig {
+            prompt: generated_prompt,
+            design_doc_path: None,
+            cli,
+            max_iterations,
+            auto_commit: true,
+            auto_init_git: true,
+            completion_signal: "<done>COMPLETE</done>".to_string(),
+        });
+
+        session.status = ProjectStatus::Ready;
+        state.status = ProjectStatus::Ready;
+    } else {
+        // Update brainstorm state
+        if let Some(ref mut brainstorm) = state.brainstorm {
+            brainstorm.completed_at = Some(Utc::now());
+        }
+
+        // Set task config with generated prompt
+        state.task = Some(TaskConfig {
+            prompt: generated_prompt,
+            design_doc_path: None,
+            cli,
+            max_iterations,
+            auto_commit: true,
+            auto_init_git: true,
+            completion_signal: "<done>COMPLETE</done>".to_string(),
+        });
+
+        state.status = ProjectStatus::Ready;
     }
 
-    // Set task config with generated prompt
-    state.task = Some(TaskConfig {
-        prompt: generated_prompt,
-        design_doc_path: None,
-        cli,
-        max_iterations,
-        auto_commit: true,
-        auto_init_git: true,
-        completion_signal: "<done>COMPLETE</done>".to_string(),
-    });
-
-    state.status = ProjectStatus::Ready;
     state.updated_at = Utc::now();
 
     storage::save_project_state(&state).map_err(|e| e.to_string())?;

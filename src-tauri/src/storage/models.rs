@@ -96,6 +96,30 @@ pub struct ProjectState {
     pub status: ProjectStatus,
     #[serde(default)]
     pub skip_git_repo_check: bool,
+    /// Legacy fields for backward compatibility - new projects use sessions
+    #[serde(default)]
+    pub brainstorm: Option<BrainstormState>,
+    #[serde(default)]
+    pub task: Option<TaskConfig>,
+    #[serde(default)]
+    pub execution: Option<ExecutionState>,
+    /// Multiple sessions/conversations for this project
+    #[serde(default)]
+    pub sessions: Vec<Session>,
+    /// Currently active session ID
+    #[serde(default)]
+    pub active_session_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// A session represents one conversation/task within a project
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Session {
+    pub id: Uuid,
+    pub name: String,
+    pub status: ProjectStatus,
     pub brainstorm: Option<BrainstormState>,
     pub task: Option<TaskConfig>,
     pub execution: Option<ExecutionState>,
@@ -180,6 +204,12 @@ pub struct ExecutionState {
     pub last_output: String,
     pub last_error: Option<String>,
     pub last_exit_code: Option<i32>,
+    /// Elapsed time in milliseconds (for persistence across restarts)
+    #[serde(default)]
+    pub elapsed_ms: Option<u64>,
+    /// Task summary (for persistence across restarts)
+    #[serde(default)]
+    pub summary: Option<String>,
 }
 
 /// CLI info returned by detect_installed_clis

@@ -400,6 +400,103 @@ export async function updateTaskAutoInit(
   return invoke('update_task_auto_init', { projectId, autoInitGit });
 }
 
+export async function updateTaskCli(
+  projectId: string,
+  cli: CliType
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    if (project.task) {
+      project.task.cli = cli;
+    }
+    return project;
+  }
+  return invoke('update_task_cli', { projectId, cli });
+}
+
+export async function updateTaskPrompt(
+  projectId: string,
+  prompt: string
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    if (project.task) {
+      project.task.prompt = prompt;
+      project.status = 'ready';
+    }
+    return project;
+  }
+  return invoke('update_task_prompt', { projectId, prompt });
+}
+
+export async function saveExecutionSummary(
+  projectId: string,
+  summary: string
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    if (project.execution) {
+      project.execution.summary = summary;
+    }
+    return project;
+  }
+  return invoke('save_execution_summary', { projectId, summary });
+}
+
+export async function createSession(
+  projectId: string,
+  name: string
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    // Basic mock logic
+    const newSession = {
+      id: crypto.randomUUID(),
+      name,
+      status: 'brainstorming' as ProjectStatus,
+      brainstorm: { answers: [] },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    if (!project.sessions) project.sessions = [];
+    project.sessions.push(newSession);
+    project.activeSessionId = newSession.id;
+    return project;
+  }
+  return invoke('create_session', { projectId, name });
+}
+
+export async function switchSession(
+  projectId: string,
+  sessionId: string
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    if (project.sessions?.some(s => s.id === sessionId)) {
+      project.activeSessionId = sessionId;
+    }
+    return project;
+  }
+  return invoke('switch_session', { projectId, sessionId });
+}
+
+export async function deleteSession(
+  projectId: string,
+  sessionId: string
+): Promise<ProjectState> {
+  if (isE2E) {
+    const project = e2eState.getProject(projectId);
+    if (project.sessions) {
+      project.sessions = project.sessions.filter(s => s.id !== sessionId);
+      if (project.activeSessionId === sessionId) {
+        project.activeSessionId = project.sessions[project.sessions.length - 1]?.id;
+      }
+    }
+    return project;
+  }
+  return invoke('delete_session', { projectId, sessionId });
+}
+
 export async function initProjectGitRepo(projectId: string): Promise<void> {
   if (isE2E) return e2eState.initProjectGitRepo(projectId);
   return invoke('init_project_git_repo', { projectId });

@@ -302,13 +302,29 @@ fn parse_ai_response(output: &str) -> Result<AiBrainstormResponse, String> {
 
 /// Extract JSON from output (handles markdown code blocks)
 fn extract_json(output: &str) -> Result<String, String> {
-    let trimmed = output.trim();
+    // First, strip all <thinking>...</thinking> blocks (can be multiple)
+    let mut cleaned = output.to_string();
+    loop {
+        if let Some(start) = cleaned.find("<thinking>") {
+            if let Some(end) = cleaned.find("</thinking>") {
+                if end > start {
+                    cleaned = format!("{}{}", &cleaned[..start], &cleaned[end + 11..]);
+                    continue;
+                }
+            }
+        }
+        break;
+    }
+    let trimmed = cleaned.trim();
 
     // Try to find JSON in code block
     if let Some(start) = trimmed.find("```json") {
         let json_start = start + 7;
         if let Some(end) = trimmed[json_start..].find("```") {
-            return Ok(trimmed[json_start..json_start + end].trim().to_string());
+            let json_str = trimmed[json_start..json_start + end].trim();
+            if !json_str.is_empty() {
+                return Ok(json_str.to_string());
+            }
         }
     }
 
@@ -322,18 +338,39 @@ fn extract_json(output: &str) -> Result<String, String> {
             block_start
         };
         if let Some(end) = trimmed[json_start..].find("```") {
-            return Ok(trimmed[json_start..json_start + end].trim().to_string());
+            let json_str = trimmed[json_start..json_start + end].trim();
+            if !json_str.is_empty() && json_str.starts_with('{') {
+                return Ok(json_str.to_string());
+            }
         }
     }
 
-    // Try to find raw JSON object
+    // Try to find raw JSON object with proper brace matching
     if let Some(start) = trimmed.find('{') {
-        if let Some(end) = trimmed.rfind('}') {
-            return Ok(trimmed[start..=end].to_string());
+        // Find matching closing brace by counting
+        let chars: Vec<char> = trimmed[start..].chars().collect();
+        let mut depth = 0;
+        let mut end_idx = None;
+        for (i, c) in chars.iter().enumerate() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end_idx = Some(i);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(end) = end_idx {
+            let json_str = &trimmed[start..start + end + 1];
+            return Ok(json_str.to_string());
         }
     }
 
-    Err(format!("No JSON found in output: {}", output))
+    Err(format!("No JSON found in output: {}", trimmed))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -645,6 +682,8 @@ echo 'not-json'
             }),
             task: None,
             execution: None,
+            sessions: vec![],
+            active_session_id: None,
             created_at: now,
             updated_at: now,
         };

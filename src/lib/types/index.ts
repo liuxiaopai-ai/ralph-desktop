@@ -69,6 +69,22 @@ export interface ProjectState {
   path: string;
   status: ProjectStatus;
   skipGitRepoCheck?: boolean;
+  /** Legacy fields for backward compatibility */
+  brainstorm?: BrainstormState;
+  task?: TaskConfig;
+  execution?: ExecutionState;
+  /** Multiple sessions/conversations for this project */
+  sessions?: Session[];
+  /** Currently active session ID */
+  activeSessionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Session {
+  id: string;
+  name: string;
+  status: ProjectStatus;
   brainstorm?: BrainstormState;
   task?: TaskConfig;
   execution?: ExecutionState;
@@ -106,6 +122,10 @@ export interface ExecutionState {
   lastOutput: string;
   lastError?: string;
   lastExitCode?: number;
+  /** Persisted elapsed time in milliseconds */
+  elapsedMs?: number;
+  /** Persisted task summary */
+  summary?: string;
 }
 
 // CLI Info
