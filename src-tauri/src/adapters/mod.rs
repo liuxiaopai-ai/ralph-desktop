@@ -232,8 +232,9 @@ pub fn command_for_cli(exe: &str, args: &[String], working_dir: &Path) -> Comman
         if exe.ends_with(".cmd") || exe.ends_with(".bat") {
             let mut cmd = Command::new("cmd");
             cmd.arg("/C");
-            // Quote the executable path to prevent injection if it contains spaces or special chars
-            cmd.arg(format!("\"{}\"", exe));
+            // Pass exe directly - Rust's Command handles spaces automatically
+            // Do NOT add extra quotes as Command::arg() already escapes properly
+            cmd.arg(exe);
             cmd.args(args);
             cmd.current_dir(working_dir);
             hide_console_window(&mut cmd);
