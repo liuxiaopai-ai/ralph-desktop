@@ -1,6 +1,48 @@
 <script lang="ts">
   import type { LogEntry } from "$lib/types";
   import { _, locale } from "svelte-i18n";
+  import { marked } from "marked";
+
+  const allowedProtocols = new Set(["http:", "https:", "mailto:"]);
+
+  function escapeHtml(str: string): string {
+    return str
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function isSafeUrl(href: string | null): href is string {
+    if (!href) return false;
+    try {
+      const url = new URL(href, "http://localhost");
+      return allowedProtocols.has(url.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  const renderer = new marked.Renderer();
+  renderer.html = (html) => escapeHtml(html);
+  renderer.text = (text) => escapeHtml(text);
+  renderer.link = (href, title, text) => {
+    if (!isSafeUrl(href)) return escapeHtml(text);
+    const safeHref = escapeHtml(href);
+    const safeTitle = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<a href="${safeHref}"${safeTitle} target="_blank" rel="noreferrer noopener">${text}</a>`;
+  };
+  renderer.image = (href, title, text) => {
+    if (!isSafeUrl(href)) return escapeHtml(text);
+    const safeSrc = escapeHtml(href);
+    const safeTitle = title ? ` title="${escapeHtml(title)}"` : "";
+    const safeAlt = escapeHtml(text);
+    return `<img src="${safeSrc}" alt="${safeAlt}"${safeTitle} loading="lazy" />`;
+  };
+
+  // Configure marked to treat newlines as line breaks while enforcing safe output
+  marked.use({ breaks: true, gfm: true, renderer });
 
   interface Props {
     logs: LogEntry[];
@@ -40,6 +82,20 @@
       second: "2-digit",
     });
   }
+
+  function enhanceMarkdown(content: string): string {
+    // 1. Highlight commands: Lines starting with "> " or "$ "
+    // Use 'cli' language to trigger custom CSS for seamless terminal styling
+    let formatted = content.replace(/^([>$] .+$)/gm, "```cli\n$1\n```");
+
+    // 2. Highlight edits: Lines starting with specific keywords
+    formatted = formatted.replace(
+      /^((?:Editing|Patching|Creating|Deleting|Reading) file:? .+$)/gm,
+      "🔹 **$1**",
+    );
+
+    return formatted;
+  }
 </script>
 
 <div
@@ -63,32 +119,39 @@
     {@const groupedLogs = (() => {
       const result: ExtendedLogEntry[] = [];
       let thinkingBlock: ExtendedLogEntry | null = null;
+      let outputBlock: ExtendedLogEntry | null = null;
+
+      function flushOutput() {
+        if (outputBlock) {
+          result.push(outputBlock);
+          outputBlock = null;
+        }
+      }
+
+      function flushThinking() {
+        if (thinkingBlock) {
+          result.push(thinkingBlock);
+          thinkingBlock = null;
+        }
+      }
 
       for (const log of logs) {
         let content = log.content;
 
         // Case 1: Start of thinking block
         if (content.includes("<thinking>")) {
-          // If we were already in a block, close it and push (shouldn't happen ideally but for safety)
-          if (thinkingBlock) {
-            result.push(thinkingBlock);
-          }
+          flushOutput();
 
-          // Check if it closes on the same line
+          if (thinkingBlock) flushThinking(); // Should not happen but safety
+
           if (content.includes("</thinking>")) {
-            // It's a single line thinking block
-            const parts = content.split(/<\/?thinking>/);
-            // parts might be ["prefix", "thinking content", "suffix"] or similar
-            // For simplicity, we just strip the tags and show it as a thinking block
             result.push({
               ...log,
               content: content.replace(/<\/?thinking>/g, ""),
               isThinking: true,
               lines: [],
             });
-            thinkingBlock = null;
           } else {
-            // Multi-line start
             thinkingBlock = {
               ...log,
               content: content.replace("<thinking>", ""),
@@ -105,8 +168,7 @@
               content: content.replace("</thinking>", ""),
             });
           }
-          result.push(thinkingBlock);
-          thinkingBlock = null;
+          flushThinking();
         }
         // Case 3: Inside thinking block
         else if (thinkingBlock) {
@@ -114,12 +176,27 @@
             thinkingBlock.lines.push(log);
           }
         }
-        // Case 4: Normal log
+        // Case 4: Normal log (Output)
         else {
-          result.push(log);
+          // If we have an existing output block, check if we can merge
+          // Merge if same type AND within time threshold (2s)
+          if (
+            outputBlock &&
+            outputBlock.isStderr === log.isStderr &&
+            new Date(log.timestamp).getTime() -
+              new Date(outputBlock.timestamp).getTime() <
+              2000
+          ) {
+            outputBlock.content += log.content;
+          } else {
+            flushOutput();
+            outputBlock = { ...log };
+          }
         }
       }
-      if (thinkingBlock) result.push(thinkingBlock);
+      flushOutput();
+      flushThinking();
+
       return result;
     })()}
 
@@ -136,17 +213,21 @@
               <div class="flex gap-2 py-0.5 text-xs text-vscode-muted">
                 <span class="shrink-0">[#{log.iteration}]</span>
                 <span class="shrink-0">{formatTime(log.timestamp)}</span>
-                <span class="break-words whitespace-pre-wrap"
-                  >{log.content}</span
+                <div
+                  class="markdown-content prose prose-invert prose-sm max-w-none break-words"
                 >
+                  {@html marked.parse(enhanceMarkdown(log.content))}
+                </div>
               </div>
               {#each log.lines as innerLog}
                 <div class="flex gap-2 py-0.5 text-xs text-vscode-muted">
                   <span class="shrink-0">[#{innerLog.iteration}]</span>
                   <span class="shrink-0">{formatTime(innerLog.timestamp)}</span>
-                  <span class="break-words whitespace-pre-wrap"
-                    >{innerLog.content}</span
+                  <div
+                    class="markdown-content prose prose-invert prose-sm max-w-none break-words flex-1"
                   >
+                    {@html marked.parse(enhanceMarkdown(innerLog.content))}
+                  </div>
                 </div>
               {/each}
             </div>
@@ -165,7 +246,11 @@
           <span class="text-vscode-muted shrink-0 select-none"
             >{formatTime(log.timestamp)}</span
           >
-          <span class="break-all whitespace-pre-wrap">{log.content}</span>
+          <div
+            class="markdown-content prose prose-invert prose-sm max-w-none break-words flex-1"
+          >
+            {@html marked.parse(enhanceMarkdown(log.content))}
+          </div>
         </div>
       {/if}
     {/each}

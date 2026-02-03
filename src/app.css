@@ -114,39 +114,121 @@ html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
 
 /* Custom utility classes for VS Code theme */
 @layer utilities {
-  .bg-vscode-editor { background-color: var(--vscode-editor-bg); }
-  .bg-vscode-sidebar { background-color: var(--vscode-sidebar-bg); }
-  .bg-vscode-panel { background-color: var(--vscode-panel-bg); }
-  .bg-vscode-input { background-color: var(--vscode-input-bg); }
-  .bg-vscode-hover { background-color: var(--vscode-list-hover); }
-  .bg-vscode-active { background-color: var(--vscode-list-active); }
-  .bg-vscode-selection { background-color: var(--vscode-selection); }
-  .bg-vscode-border { background-color: var(--vscode-border); }
+  .bg-vscode-editor {
+    background-color: var(--vscode-editor-bg);
+  }
 
-  .border-vscode { border-color: var(--vscode-border); }
-  .border-vscode-light { border-color: var(--vscode-border-light); }
+  .bg-vscode-sidebar {
+    background-color: var(--vscode-sidebar-bg);
+  }
 
-  .text-vscode { color: var(--vscode-foreground); }
-  .text-vscode-dim { color: var(--vscode-foreground-dim); }
-  .text-vscode-muted { color: var(--vscode-foreground-muted); }
+  .bg-vscode-panel {
+    background-color: var(--vscode-panel-bg);
+  }
 
-  .text-vscode-accent { color: var(--vscode-accent); }
-  .bg-vscode-accent { background-color: var(--vscode-accent); }
-  .bg-vscode-accent-hover:hover { background-color: var(--vscode-accent-hover); }
-  .border-vscode-accent { border-color: var(--vscode-accent); }
+  .bg-vscode-input {
+    background-color: var(--vscode-input-bg);
+  }
 
-  .text-vscode-success { color: var(--vscode-success); }
-  .text-vscode-warning { color: var(--vscode-warning); }
-  .text-vscode-error { color: var(--vscode-error); }
-  .text-vscode-info { color: var(--vscode-info); }
-  .bg-vscode-success { background-color: var(--vscode-success); }
-  .bg-vscode-warning { background-color: var(--vscode-warning); }
-  .bg-vscode-error { background-color: var(--vscode-error); }
-  .bg-vscode-info { background-color: var(--vscode-info); }
-  .border-vscode-success { border-color: var(--vscode-success); }
-  .border-vscode-warning { border-color: var(--vscode-warning); }
-  .border-vscode-error { border-color: var(--vscode-error); }
-  .border-vscode-info { border-color: var(--vscode-info); }
+  .bg-vscode-hover {
+    background-color: var(--vscode-list-hover);
+  }
+
+  .bg-vscode-active {
+    background-color: var(--vscode-list-active);
+  }
+
+  .bg-vscode-selection {
+    background-color: var(--vscode-selection);
+  }
+
+  .bg-vscode-border {
+    background-color: var(--vscode-border);
+  }
+
+  .border-vscode {
+    border-color: var(--vscode-border);
+  }
+
+  .border-vscode-light {
+    border-color: var(--vscode-border-light);
+  }
+
+  .text-vscode {
+    color: var(--vscode-foreground);
+  }
+
+  .text-vscode-dim {
+    color: var(--vscode-foreground-dim);
+  }
+
+  .text-vscode-muted {
+    color: var(--vscode-foreground-muted);
+  }
+
+  .text-vscode-accent {
+    color: var(--vscode-accent);
+  }
+
+  .bg-vscode-accent {
+    background-color: var(--vscode-accent);
+  }
+
+  .bg-vscode-accent-hover:hover {
+    background-color: var(--vscode-accent-hover);
+  }
+
+  .border-vscode-accent {
+    border-color: var(--vscode-accent);
+  }
+
+  .text-vscode-success {
+    color: var(--vscode-success);
+  }
+
+  .text-vscode-warning {
+    color: var(--vscode-warning);
+  }
+
+  .text-vscode-error {
+    color: var(--vscode-error);
+  }
+
+  .text-vscode-info {
+    color: var(--vscode-info);
+  }
+
+  .bg-vscode-success {
+    background-color: var(--vscode-success);
+  }
+
+  .bg-vscode-warning {
+    background-color: var(--vscode-warning);
+  }
+
+  .bg-vscode-error {
+    background-color: var(--vscode-error);
+  }
+
+  .bg-vscode-info {
+    background-color: var(--vscode-info);
+  }
+
+  .border-vscode-success {
+    border-color: var(--vscode-success);
+  }
+
+  .border-vscode-warning {
+    border-color: var(--vscode-warning);
+  }
+
+  .border-vscode-error {
+    border-color: var(--vscode-error);
+  }
+
+  .border-vscode-info {
+    border-color: var(--vscode-info);
+  }
 
   .focus-vscode:focus {
     outline: 1px solid var(--vscode-focus-border);
@@ -161,7 +243,9 @@ button {
 }
 
 /* Input styles */
-input, textarea, select {
+input,
+textarea,
+select {
   background-color: var(--vscode-input-bg);
   border: 1px solid var(--vscode-border);
   color: var(--vscode-foreground);
@@ -169,7 +253,9 @@ input, textarea, select {
   font-size: inherit;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: 1px solid var(--vscode-focus-border);
   outline-offset: -1px;
   border-color: var(--vscode-focus-border);
@@ -178,4 +264,148 @@ input:focus, textarea:focus, select:focus {
 /* Selection */
 ::selection {
   background-color: var(--vscode-selection);
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+
+.markdown-content p {
+  margin-bottom: 0.5em;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  color: var(--vscode-foreground);
+}
+
+.markdown-content h1 {
+  font-size: 1.5em;
+}
+
+.markdown-content h2 {
+  font-size: 1.25em;
+}
+
+.markdown-content h3 {
+  font-size: 1.1em;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-content code {
+  font-family: monospace;
+  background-color: #2d2d2d;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background-color: var(--vscode-editor-bg);
+  padding: 0.75em;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 0.75em;
+  border: 1px solid var(--vscode-border);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.9em;
+  color: var(--vscode-foreground);
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid var(--vscode-focus-border);
+  background-color: var(--vscode-sidebar-bg);
+  padding: 0.5em 1em;
+  margin-bottom: 0.75em;
+  color: var(--vscode-foreground-muted);
+}
+
+.markdown-content a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+  color: var(--vscode-textLink-activeForeground);
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.75em;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--vscode-border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: var(--vscode-sidebar-bg);
+  font-weight: 600;
+}
+
+/* CLI Command Styling - Native Terminal Look */
+.markdown-content pre:has(code.language-cli) {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 0.25em !important;
+}
+
+.markdown-content code.language-cli {
+  color: var(--vscode-success);
+  font-weight: bold;
+  font-family: inherit;
+  display: block;
+  /* Ensure it takes full width/behaves like a block line */
 }
