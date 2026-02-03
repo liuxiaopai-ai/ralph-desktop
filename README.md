@@ -134,6 +134,7 @@ Download the latest release for your platform:
 > **Note:** The app is not code-signed. On macOS, right-click the app and select "Open", or go to System Settings → Privacy & Security → Open Anyway. On Windows, click "More info" → "Run anyway" when SmartScreen appears.
 
 **Linux AppImage (first run):**
+
 ```bash
 chmod +x Ralph.Desktop_*.AppImage
 ./Ralph.Desktop_*.AppImage
@@ -155,7 +156,7 @@ chmod +x Ralph.Desktop_*.AppImage
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - pnpm
 - Rust 1.70+
 - Tauri CLI

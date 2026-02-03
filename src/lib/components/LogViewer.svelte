@@ -25,15 +25,16 @@
   }
 
   const renderer = new marked.Renderer();
-  renderer.html = (html) => escapeHtml(html);
-  renderer.text = (text) => escapeHtml(text);
-  renderer.link = (href, title, text) => {
+  renderer.html = ({ text }: any) => escapeHtml(text);
+  renderer.text = ({ text }: any) => escapeHtml(text);
+  renderer.link = function ({ href, title, tokens }: any) {
+    const text = this.parser.parseInline(tokens);
     if (!isSafeUrl(href)) return escapeHtml(text);
     const safeHref = escapeHtml(href);
     const safeTitle = title ? ` title="${escapeHtml(title)}"` : "";
     return `<a href="${safeHref}"${safeTitle} target="_blank" rel="noreferrer noopener">${text}</a>`;
   };
-  renderer.image = (href, title, text) => {
+  renderer.image = ({ href, title, text }: any) => {
     if (!isSafeUrl(href)) return escapeHtml(text);
     const safeSrc = escapeHtml(href);
     const safeTitle = title ? ` title="${escapeHtml(title)}"` : "";
@@ -183,6 +184,7 @@
           if (
             outputBlock &&
             outputBlock.isStderr === log.isStderr &&
+            outputBlock.iteration === log.iteration &&
             new Date(log.timestamp).getTime() -
               new Date(outputBlock.timestamp).getTime() <
               2000

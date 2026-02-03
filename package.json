@@ -3,6 +3,9 @@
   "version": "0.1.16",
   "description": "",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -27,7 +30,6 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
-    "@types/marked": "^5.0.2",
     "autoprefixer": "^10.4.23",
     "playwright": "^1.51.0",
     "postcss": "^8.5.6",
