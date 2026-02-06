@@ -413,6 +413,12 @@ pub fn apply_shell_env(cmd: &mut Command) {
 
 pub fn resolve_cli_path(binary: &str) -> Option<String> {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    if let Some(path) = env::var_os("PATH") {
+        if let Ok(found) = which::which_in(binary, Some(path), &cwd) {
+            return Some(found.to_string_lossy().to_string());
+        }
+    }
+
     if let Some(path) = shell_env().get("PATH") {
         if let Ok(found) = which::which_in(binary, Some(path), &cwd) {
             return Some(found.to_string_lossy().to_string());

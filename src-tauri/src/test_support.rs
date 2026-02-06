@@ -7,5 +7,5 @@ pub fn lock_env() -> MutexGuard<'static, ()> {
     ENV_LOCK
         .get_or_init(|| Mutex::new(()))
         .lock()
-        .expect("lock test env mutex")
+        .unwrap_or_else(|e| e.into_inner())
 }
