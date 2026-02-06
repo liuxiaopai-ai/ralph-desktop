@@ -704,6 +704,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn brainstorm_uses_configured_cli() {
+        let _env_lock = crate::test_support::lock_env();
         let temp_dir = TempDir::new().unwrap();
         let home_dir = temp_dir.path();
         let _home_guard = EnvVarGuard::set("HOME", home_dir);

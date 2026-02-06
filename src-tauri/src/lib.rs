@@ -4,6 +4,8 @@ mod commands;
 mod engine;
 mod security;
 mod storage;
+#[cfg(test)]
+mod test_support;
 
 use commands::AppState;
 use tauri::Manager;

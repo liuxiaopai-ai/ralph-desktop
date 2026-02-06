@@ -330,7 +330,7 @@ mod tests {
     use super::*;
     use std::env;
     use std::ffi::{OsStr, OsString};
-    use tempfile::TempDir;
+    use tempfile::tempdir;
 
     struct EnvVarGuard {
         key: &'static str,
@@ -357,19 +357,19 @@ mod tests {
 
     #[tokio::test]
     async fn update_task_prompt_persists_prompt() {
-        let temp_dir = TempDir::new().unwrap();
-        let _home_guard = EnvVarGuard::set("HOME", temp_dir.path());
+        let _env_lock = crate::test_support::lock_env();
+        let home_dir = tempdir().unwrap();
+        let _home_guard = EnvVarGuard::set("HOME", home_dir.path());
 
         let now = Utc::now();
         let id = Uuid::new_v4();
-        let project_dir = temp_dir.path().join("project");
-        std::fs::create_dir_all(&project_dir).unwrap();
+        let project_dir = tempdir().unwrap();
 
         let initial_prompt = "old prompt".to_string();
         let state = ProjectState {
             id,
             name: "Test".to_string(),
-            path: project_dir.to_string_lossy().to_string(),
+            path: project_dir.path().to_string_lossy().to_string(),
             status: ProjectStatus::Ready,
             skip_git_repo_check: false,
             brainstorm: None,
@@ -402,5 +402,7 @@ mod tests {
             loaded.task.as_ref().map(|t| t.prompt.as_str()),
             Some(updated_prompt.as_str())
         );
+
+        let _ = storage::delete_project_data(&id);
     }
 }

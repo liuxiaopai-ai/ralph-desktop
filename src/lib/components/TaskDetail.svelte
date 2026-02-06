@@ -422,7 +422,9 @@
         </div>
         {#if showPrompt}
           <div class="mt-3">
-            <PromptEditor {project} onSave={handlePromptSave} />
+            {#key project.id}
+              <PromptEditor {project} onSave={handlePromptSave} />
+            {/key}
           </div>
         {/if}
       </div>

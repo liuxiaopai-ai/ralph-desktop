@@ -423,6 +423,7 @@ mod tests {
     use tempfile::tempdir;
 
     fn with_temp_home<T>(f: impl FnOnce() -> T) -> T {
+        let _env_lock = crate::test_support::lock_env();
         let dir = tempdir().expect("tempdir");
         let original_home = std::env::var("HOME").ok();
         std::env::set_var("HOME", dir.path());
