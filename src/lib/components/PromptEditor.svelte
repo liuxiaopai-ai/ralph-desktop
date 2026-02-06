@@ -4,22 +4,34 @@
 
   interface Props {
     project: ProjectState;
-    onSave?: (prompt: string) => void;
+    onSave?: (prompt: string) => void | Promise<void>;
     onCancel?: () => void;
   }
 
   let { project, onSave, onCancel }: Props = $props();
 
-  let editedPrompt = $state(project.task?.prompt || '');
+  let editedPrompt = $state('');
   let isEditing = $state(false);
+  let saving = $state(false);
+
+  $effect(() => {
+    if (!isEditing) {
+      editedPrompt = project.task?.prompt || '';
+    }
+  });
 
   function handleEdit() {
     isEditing = true;
   }
 
-  function handleSave() {
-    onSave?.(editedPrompt);
-    isEditing = false;
+  async function handleSave() {
+    saving = true;
+    try {
+      await onSave?.(editedPrompt);
+      isEditing = false;
+    } finally {
+      saving = false;
+    }
   }
 
   function handleCancel() {
@@ -64,6 +76,7 @@
         <button
           class="px-3 py-1 text-sm bg-vscode-accent bg-vscode-accent-hover rounded text-white"
           onclick={handleSave}
+          disabled={saving}
         >
           {$_('prompt.save')}
         </button>

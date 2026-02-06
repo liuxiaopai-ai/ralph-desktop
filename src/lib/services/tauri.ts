@@ -241,6 +241,15 @@ const e2eState = (() => {
       project.state.updatedAt = now();
       return project.state;
     },
+    updateTaskPrompt(projectId: string, prompt: string) {
+      const project = ensureProject(projectId);
+      if (!project.state.task) {
+        throw new Error('No task configured for this project');
+      }
+      project.state.task.prompt = prompt;
+      project.state.updatedAt = now();
+      return project.state;
+    },
     deleteProject(id: string) {
       projects.delete(id);
     },
@@ -398,6 +407,14 @@ export async function updateTaskAutoInit(
 ): Promise<ProjectState> {
   if (isE2E) return e2eState.updateTaskAutoInit(projectId, autoInitGit);
   return invoke('update_task_auto_init', { projectId, autoInitGit });
+}
+
+export async function updateTaskPrompt(
+  projectId: string,
+  prompt: string
+): Promise<ProjectState> {
+  if (isE2E) return e2eState.updateTaskPrompt(projectId, prompt);
+  return invoke('update_task_prompt', { projectId, prompt });
 }
 
 export async function initProjectGitRepo(projectId: string): Promise<void> {

@@ -266,6 +266,15 @@
       console.error("Failed to update max iterations:", error);
     }
   }
+
+  async function handlePromptSave(prompt: string) {
+    try {
+      const updated = await api.updateTaskPrompt(project.id, prompt);
+      updateCurrentProject(updated);
+    } catch (error) {
+      console.error("Failed to update prompt:", error);
+    }
+  }
 </script>
 
 <div class="flex-1 flex flex-col overflow-hidden">
@@ -417,7 +426,7 @@
         </div>
         {#if showPrompt}
           <div class="mt-3">
-            <PromptEditor {project} />
+            <PromptEditor {project} onSave={handlePromptSave} />
           </div>
         {/if}
       </div>

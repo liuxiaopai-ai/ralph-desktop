@@ -138,6 +138,24 @@ pub async fn update_task_auto_init(
     Ok(state)
 }
 
+/// Update prompt content for a project's task
+#[tauri::command]
+pub async fn update_task_prompt(
+    project_id: String,
+    prompt: String,
+) -> Result<ProjectState, String> {
+    let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
+    let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
+    let task = state
+        .task
+        .as_mut()
+        .ok_or("No task configured for this project")?;
+    task.prompt = prompt;
+    state.updated_at = Utc::now();
+    storage::save_project_state(&state).map_err(|e| e.to_string())?;
+    Ok(state)
+}
+
 /// Check if project directory is a git repository
 #[tauri::command]
 pub async fn check_project_git_repo(project_id: String) -> Result<bool, String> {
