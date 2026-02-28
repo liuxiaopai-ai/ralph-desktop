@@ -3,6 +3,7 @@
   import * as api from '$lib/services/tauri';
   import type { ConversationMessage, AiBrainstormResponse, QuestionOption } from '$lib/services/tauri';
   import { config } from '$lib/stores/settings';
+  import { updateProjectName } from '$lib/stores/projects';
   import { _ } from 'svelte-i18n';
 
   interface Props {
@@ -34,6 +35,7 @@
   let generatedPrompt = $state<string | null>(null);
   let selectedCli = $state<CliType>($config.defaultCli);
   let maxIterations = $state($config.defaultMaxIterations);
+  let titleGenerated = $state(false);
 
 
   // Start with initial question
@@ -78,6 +80,18 @@
 
     // Add to conversation
     conversation = [...conversation, { role: 'user', content: answer }];
+
+    // Fire-and-forget title generation on the first user message only
+    if (!titleGenerated) {
+      titleGenerated = true;
+      api.generateProjectTitle(project.id, answer).then((title) => {
+        updateProjectName(project.id, title);
+      }).catch(() => {
+        // Fallback: truncate first message to 15 chars + ellipsis
+        const fallback = answer.length > 15 ? answer.slice(0, 15) + '…' : answer;
+        updateProjectName(project.id, fallback);
+      });
+    }
 
     // Reset state
     selectedOptions = new Set();

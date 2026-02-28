@@ -554,6 +554,15 @@ export interface AiBrainstormResponse {
   generatedPrompt?: string;
 }
 
+// AI Title Generation
+export async function generateProjectTitle(
+  projectId: string,
+  firstMessage: string
+): Promise<string> {
+  if (isE2E) return firstMessage.slice(0, 15);
+  return invoke('generate_project_title_cmd', { projectId, firstMessage });
+}
+
 // AI Brainstorm Commands
 export async function aiBrainstormChat(
   projectId: string,
