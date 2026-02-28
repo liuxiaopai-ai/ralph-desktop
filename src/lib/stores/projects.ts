@@ -38,6 +38,14 @@ export function updateCurrentProject(state: ProjectState) {
   currentProject.set(state);
 }
 
+export function updateProjectName(id: string, name: string) {
+  projects.update(list => list.map(p => p.id === id ? { ...p, name } : p));
+  currentProject.update(current => {
+    if (!current || current.id !== id) return current;
+    return { ...current, name };
+  });
+}
+
 export function updateProjectStatus(id: string, status: ProjectStatus) {
   projects.update(list => list.map(p => p.id === id ? { ...p, status } : p));
   currentProject.update(current => {

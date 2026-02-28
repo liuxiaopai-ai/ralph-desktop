@@ -652,6 +652,58 @@ fn collect_brainstorm_output(cli_type: CliType, stdout: &str) -> (String, Option
     (text, error)
 }
 
+const TITLE_SYSTEM_PROMPT: &str = "You are a title generator. Given a user task request, generate a concise title of at most 15 characters. Output ONLY the title text — no quotes, no punctuation at the end, no explanation, no markdown.";
+
+/// Generate a short project title (≤15 chars) from the user's first message.
+pub async fn generate_project_title(
+    working_dir: &Path,
+    first_message: &str,
+    cli_type: CliType,
+    skip_git_repo_check: bool,
+) -> Result<String, String> {
+    let prompt = format!(
+        "{}\n\nUser request: {}",
+        TITLE_SYSTEM_PROMPT, first_message
+    );
+
+    let raw =
+        call_brainstorm_cli(cli_type, working_dir, &prompt, skip_git_repo_check).await?;
+
+    // Take first non-empty line, strip common quote/backtick wrapping
+    let title: String = raw
+        .lines()
+        .map(|l| {
+            l.trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim_matches('`')
+                .trim()
+        })
+        .find(|l| !l.is_empty())
+        .unwrap_or("")
+        .chars()
+        .take(15)
+        .collect();
+
+    if title.is_empty() {
+        return Err("Empty title from AI".to_string());
+    }
+
+    Ok(title)
+}
+
+/// Truncate `text` to `max_chars` characters, appending '…' if truncated.
+/// Used as fallback when AI title generation fails.
+pub fn truncate_to_title(text: &str, max_chars: usize) -> String {
+    let count = text.chars().count();
+    if count <= max_chars {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_chars).collect();
+        format!("{}…", truncated)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ConversationMessage;
@@ -764,5 +816,49 @@ echo 'not-json'
         .unwrap();
 
         assert_eq!(response.question, "Hi");
+    }
+
+    // --- Unit tests for truncate_to_title ---
+
+    #[test]
+    fn truncate_to_title_short_message_unchanged() {
+        let msg = "貪吃蛇";
+        let result = super::truncate_to_title(msg, 15);
+        assert_eq!(result, "貪吃蛇");
+    }
+
+    #[test]
+    fn truncate_to_title_exact_limit_unchanged() {
+        // exactly 15 chars, no truncation
+        let msg = "123456789012345";
+        assert_eq!(msg.chars().count(), 15);
+        let result = super::truncate_to_title(msg, 15);
+        assert_eq!(result, msg);
+    }
+
+    #[test]
+    fn truncate_to_title_exceeds_limit_appends_ellipsis() {
+        let msg = "帮我写一个贪吃蛇游戏，加上难度选择";
+        let result = super::truncate_to_title(msg, 15);
+        // Result must be ≤ 15 chars of original content + ellipsis
+        let content_chars: Vec<char> = result.chars().collect();
+        // Last char is '…', preceding chars ≤ 15
+        assert!(result.ends_with('…'));
+        let without_ellipsis: String = content_chars[..content_chars.len() - 1].iter().collect();
+        assert_eq!(without_ellipsis.chars().count(), 15);
+    }
+
+    #[test]
+    fn truncate_to_title_result_display_length_at_most_16_graphemes() {
+        // 15 content chars + 1 ellipsis = 16 at most
+        let msg = "a".repeat(100);
+        let result = super::truncate_to_title(&msg, 15);
+        assert!(result.chars().count() <= 16);
+    }
+
+    #[test]
+    fn truncate_to_title_empty_string() {
+        let result = super::truncate_to_title("", 15);
+        assert_eq!(result, "");
     }
 }

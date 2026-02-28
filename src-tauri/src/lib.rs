@@ -40,6 +40,7 @@ pub fn run() {
             commands::update_project_status,
             commands::ai_brainstorm_chat,
             commands::complete_ai_brainstorm,
+            commands::generate_project_title_cmd,
             // Loop commands
             commands::start_loop,
             commands::pause_loop,
