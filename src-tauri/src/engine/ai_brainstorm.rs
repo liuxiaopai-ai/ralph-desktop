@@ -6,6 +6,14 @@ use std::process::Stdio;
 #[cfg(target_os = "windows")]
 use tokio::io::AsyncWriteExt;
 
+/// Claude `--output-format json` 输出的 envelope 结构
+#[derive(Deserialize)]
+struct ClaudeJsonOutput {
+    result: Option<String>,
+    #[serde(default)]
+    is_error: bool,
+}
+
 /// AI brainstorm response with structured options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -488,6 +496,8 @@ async fn call_claude_cli(working_dir: &Path, prompt: &str) -> Result<String, Str
         "--permission-mode".to_string(),
         "bypassPermissions".to_string(),
     ];
+    args.push("--output-format".to_string());
+    args.push("json".to_string());
     #[cfg(target_os = "windows")]
     {
         args.push("--input-format".to_string());
@@ -497,8 +507,6 @@ async fn call_claude_cli(working_dir: &Path, prompt: &str) -> Result<String, Str
     {
         args.push(prompt.to_string());
     }
-    args.push("--output-format".to_string());
-    args.push("json".to_string());
     let mut cmd = crate::adapters::command_for_cli(&exe, &args, working_dir);
     crate::adapters::apply_extended_path(&mut cmd);
     crate::adapters::apply_shell_env(&mut cmd);
@@ -556,24 +564,23 @@ async fn call_claude_cli(working_dir: &Path, prompt: &str) -> Result<String, Str
         return Err(stderr.trim().to_string());
     }
 
-    Ok(unwrap_claude_json_output(&stdout))
+    unwrap_claude_json_output(&stdout)
 }
 
 /// Claude `--output-format json` 输出格式:
 /// {"type":"result","subtype":"success","result":"<model text>","is_error":false,...}
 /// 提取 `result` 字段供后续 `parse_ai_response` 使用。
 /// 若格式不匹配（旧版 CLI 或 text 模式），原样返回。
-fn unwrap_claude_json_output(raw: &str) -> String {
-    #[derive(Deserialize)]
-    struct ClaudeJsonOutput {
-        result: Option<String>,
-    }
+fn unwrap_claude_json_output(raw: &str) -> Result<String, String> {
     if let Ok(obj) = serde_json::from_str::<ClaudeJsonOutput>(raw.trim()) {
         if let Some(result) = obj.result {
-            return result;
+            if obj.is_error {
+                return Err(result);
+            }
+            return Ok(result);
         }
     }
-    raw.to_string()
+    Ok(raw.to_string())
 }
 
 async fn call_brainstorm_cli(
@@ -884,7 +891,7 @@ echo '{"type":"result","subtype":"success","result":"not-json","is_error":false}
     #[test]
     fn unwrap_claude_json_output_extracts_result_field() {
         let raw = r#"{"type":"result","subtype":"success","result":"hello world","is_error":false}"#;
-        let result = super::unwrap_claude_json_output(raw);
+        let result = super::unwrap_claude_json_output(raw).unwrap();
         assert_eq!(result, "hello world");
     }
 
@@ -893,7 +900,7 @@ echo '{"type":"result","subtype":"success","result":"not-json","is_error":false}
         let inner = r#"{"question":"What?","options":[],"multiSelect":false,"allowOther":false,"isComplete":false}"#;
         let raw = format!(r#"{{"type":"result","subtype":"success","result":"{escaped}","is_error":false}}"#,
             escaped = inner.replace('"', r#"\""#));
-        let result = super::unwrap_claude_json_output(&raw);
+        let result = super::unwrap_claude_json_output(&raw).unwrap();
         assert_eq!(result, inner);
     }
 
@@ -901,21 +908,29 @@ echo '{"type":"result","subtype":"success","result":"not-json","is_error":false}
     fn unwrap_claude_json_output_fallback_on_plain_text() {
         // 旧版 CLI 或 text 模式直接输出原始文本，应原样返回
         let raw = "not-json";
-        let result = super::unwrap_claude_json_output(raw);
+        let result = super::unwrap_claude_json_output(raw).unwrap();
         assert_eq!(result, "not-json");
     }
 
     #[test]
     fn unwrap_claude_json_output_fallback_on_missing_result_field() {
         let raw = r#"{"type":"error","message":"something went wrong"}"#;
-        let result = super::unwrap_claude_json_output(raw);
+        let result = super::unwrap_claude_json_output(raw).unwrap();
         assert_eq!(result, raw);
     }
 
     #[test]
     fn unwrap_claude_json_output_trims_whitespace() {
         let raw = "  {\"type\":\"result\",\"subtype\":\"success\",\"result\":\"trimmed\",\"is_error\":false}  ";
-        let result = super::unwrap_claude_json_output(raw);
+        let result = super::unwrap_claude_json_output(raw).unwrap();
         assert_eq!(result, "trimmed");
+    }
+
+    #[test]
+    fn unwrap_claude_json_output_is_error_true_returns_err() {
+        let raw = r#"{"type":"result","subtype":"error","result":"auth failed","is_error":true}"#;
+        let result = super::unwrap_claude_json_output(raw);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "auth failed");
     }
 }
