@@ -269,6 +269,7 @@ pub async fn update_project_status(
 pub async fn ai_brainstorm_chat(
     project_id: String,
     conversation: Vec<ConversationMessage>,
+    cli: Option<CliType>,
 ) -> Result<AiBrainstormResponse, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
@@ -278,7 +279,7 @@ pub async fn ai_brainstorm_chat(
     run_ai_brainstorm(
         &working_dir,
         &conversation,
-        config.default_cli,
+        cli.unwrap_or(config.default_cli),
         state.skip_git_repo_check,
     )
     .await
@@ -327,6 +328,7 @@ pub async fn complete_ai_brainstorm(
 pub async fn generate_project_title_cmd(
     project_id: String,
     first_message: String,
+    cli: Option<CliType>,
 ) -> Result<String, String> {
     let uuid = Uuid::parse_str(&project_id).map_err(|e| e.to_string())?;
     let mut state = storage::load_project_state(&uuid).map_err(|e| e.to_string())?;
@@ -338,7 +340,7 @@ pub async fn generate_project_title_cmd(
     let title = match generate_project_title(
         &working_dir,
         &first_message,
-        config.default_cli,
+        cli.unwrap_or(config.default_cli),
         state.skip_git_repo_check,
     )
     .await
@@ -454,18 +456,40 @@ mod tests {
     // --- Unit tests for generate_project_title_cmd fallback ---
 
     #[tokio::test]
-    async fn generate_project_title_cmd_fallback_when_cli_missing() {
+    async fn generate_project_title_cmd_fallback_when_cli_fails() {
         let _env_lock = crate::test_support::lock_env();
         // Point HOME to a temp dir so storage is isolated
         let home_dir = tempdir().unwrap();
         let _home_guard = EnvVarGuard::set("HOME", home_dir.path());
 
-        // Point PATH to an empty dir so no CLI exists → AI call fails → fallback
-        let empty_bin = home_dir.path().join("emptybin");
-        std::fs::create_dir_all(&empty_bin).unwrap();
-        let orig_path = std::env::var_os("PATH").unwrap_or_default();
-        let new_path = format!("{};{}", empty_bin.display(), orig_path.to_string_lossy());
-        let _path_guard = EnvVarGuard::set("PATH", new_path);
+        // All CLI lookups must resolve to failing fixtures, never an installed CLI.
+        let bin_dir = home_dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        for name in ["claude", "codex", "opencode"] {
+            let executable = bin_dir.join(if cfg!(windows) {
+                format!("{name}.cmd")
+            } else {
+                name.to_string()
+            });
+            std::fs::write(
+                &executable,
+                if cfg!(windows) {
+                    "@exit /b 1\n"
+                } else {
+                    "#!/bin/sh\nexit 1\n"
+                },
+            )
+            .unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755))
+                    .unwrap();
+            }
+        }
+        let _path_guard = EnvVarGuard::set("PATH", &bin_dir);
+        #[cfg(unix)]
+        let _shell_guard = EnvVarGuard::set("SHELL", "/bin/sh");
 
         let now = Utc::now();
         let id = Uuid::new_v4();
@@ -499,9 +523,12 @@ mod tests {
         storage::save_project_index(&meta).unwrap();
 
         let long_msg = "帮我写一个贪吃蛇游戏，加上难度选择".to_string();
-        let title = generate_project_title_cmd(id.to_string(), long_msg)
+        let expected_title = truncate_to_title(&long_msg, 15);
+        let title = generate_project_title_cmd(id.to_string(), long_msg, None)
             .await
             .expect("should not error even when AI fails");
+
+        assert_eq!(title, expected_title);
 
         // Fallback title must be ≤ 16 chars (15 + ellipsis) and not the original path
         assert!(title.chars().count() <= 16, "fallback title too long: {}", title);

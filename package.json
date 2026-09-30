@@ -14,7 +14,8 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
     "test:e2e": "node scripts/e2e/run_e2e.mjs",
-    "test:e2e:cli": "node scripts/e2e/run_e2e.mjs --cli"
+    "test:e2e:cli": "node scripts/e2e/run_e2e.mjs --cli",
+    "test:e2e:brainstorm-cli": "node scripts/e2e/brainstorm_cli.mjs"
   },
   "license": "MIT",
   "dependencies": {
@@ -30,6 +31,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
+    "@types/node": "^20.19.0",
     "autoprefixer": "^10.4.23",
     "playwright": "^1.51.0",
     "postcss": "^8.5.6",

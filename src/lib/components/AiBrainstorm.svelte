@@ -84,7 +84,7 @@
     // Fire-and-forget title generation on the first user message only
     if (!titleGenerated) {
       titleGenerated = true;
-      api.generateProjectTitle(project.id, answer).then((title) => {
+      api.generateProjectTitle(project.id, answer, selectedCli).then((title) => {
         updateProjectName(project.id, title);
       }).catch(() => {
         // Fallback: truncate first message to 15 chars + ellipsis
@@ -100,7 +100,7 @@
     isLoading = true;
 
     try {
-      const response = await api.aiBrainstormChat(project.id, conversation);
+      const response = await api.aiBrainstormChat(project.id, conversation, selectedCli);
 
       if (response.isComplete && response.generatedPrompt) {
         generatedPrompt = response.generatedPrompt;
@@ -269,6 +269,20 @@
         <span class="text-xs text-vscode-muted">{$_('brainstorm.thinkingLabel')}</span>
       {/if}
     </div>
+    <div class="mt-3 flex items-center gap-3">
+      <label for="brainstorm-cli" class="text-xs text-vscode-dim">{$_('brainstorm.cliLabel')}</label>
+      <select
+        id="brainstorm-cli"
+        class="h-8 px-2 text-sm rounded border border-vscode bg-vscode-input disabled:opacity-50"
+        bind:value={selectedCli}
+        disabled={isLoading}
+        data-testid="brainstorm-cli"
+      >
+        <option value="claude">Claude Code</option>
+        <option value="codex">Codex</option>
+        <option value="opencode">OpenCode</option>
+      </select>
+    </div>
   </div>
 
   <!-- Main content -->
@@ -291,17 +305,6 @@
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-vscode-dim mb-1.5">{$_('brainstorm.cliLabel')}</label>
-            <select
-              class="w-full h-10 px-3 text-sm rounded border border-vscode bg-vscode-input"
-              bind:value={selectedCli}
-            >
-              <option value="claude">Claude Code</option>
-              <option value="codex">Codex</option>
-              <option value="opencode">OpenCode</option>
-            </select>
-          </div>
           <div>
             <label class="block text-xs text-vscode-dim mb-1.5">{$_('brainstorm.maxIterationsLabel')}</label>
             <input
