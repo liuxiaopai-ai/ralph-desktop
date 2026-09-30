@@ -557,19 +557,21 @@ export interface AiBrainstormResponse {
 // AI Title Generation
 export async function generateProjectTitle(
   projectId: string,
-  firstMessage: string
+  firstMessage: string,
+  cli?: CliType
 ): Promise<string> {
   if (isE2E) return firstMessage.slice(0, 15);
-  return invoke('generate_project_title_cmd', { projectId, firstMessage });
+  return invoke('generate_project_title_cmd', { projectId, firstMessage, cli });
 }
 
 // AI Brainstorm Commands
 export async function aiBrainstormChat(
   projectId: string,
-  conversation: ConversationMessage[]
+  conversation: ConversationMessage[],
+  cli?: CliType
 ): Promise<AiBrainstormResponse> {
   if (isE2E) return e2eState.aiBrainstormChat(projectId, conversation);
-  return invoke('ai_brainstorm_chat', { projectId, conversation });
+  return invoke('ai_brainstorm_chat', { projectId, conversation, cli });
 }
 
 export async function completeAiBrainstorm(

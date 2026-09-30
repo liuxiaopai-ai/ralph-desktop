@@ -811,11 +811,162 @@ echo 'not-json'
                 role: "user".to_string(),
                 content: "Test".to_string(),
             }],
+            None,
         )
         .await
         .unwrap();
 
         assert_eq!(response.question, "Hi");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn brainstorm_routes_each_request_and_title_to_selected_cli() {
+        let _env_lock = crate::test_support::lock_env();
+        let temp_dir = TempDir::new().unwrap();
+        let _home_guard = EnvVarGuard::set("HOME", temp_dir.path());
+        let _shell_guard = EnvVarGuard::set("SHELL", "/bin/bash");
+        let bin_dir = temp_dir.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+
+        let clis = [
+            (CliType::Claude, "claude"),
+            (CliType::Codex, "codex"),
+            (CliType::OpenCode, "opencode"),
+        ];
+        for (cli, name) in clis {
+            let question = serde_json::json!({
+                "question": format!("Question from {name}"),
+                "description": null,
+                "options": [],
+                "multiSelect": false,
+                "allowOther": false,
+                "isComplete": false,
+            })
+            .to_string();
+            let encode_output = |text: &str| match cli {
+                CliType::Claude => text.to_string(),
+                CliType::Codex => serde_json::json!({
+                    "type": "item.completed",
+                    "item": { "type": "agent_message", "text": text },
+                })
+                .to_string(),
+                CliType::OpenCode => serde_json::json!({
+                    "type": "text",
+                    "part": { "type": "text", "text": text },
+                })
+                .to_string(),
+            };
+            let script = format!(
+                "#!/bin/sh\nprintf '%s\\n' '{name}' >> cli-calls.log\ncase \"$*\" in\n  *'You are a title generator.'*) printf '%s\\n' '{}' ;;\n  *) printf '%s\\n' '{}' ;;\nesac\n",
+                encode_output(&format!("{name} title")),
+                encode_output(&question),
+            );
+            write_executable(&bin_dir.join(name), &script);
+        }
+        // Every supported executable resolves to a fixture, never a real model CLI.
+        let _path_guard = EnvVarGuard::set("PATH", &bin_dir);
+        let project_path = temp_dir.path().join("project");
+        fs::create_dir_all(&project_path).unwrap();
+        let project = crate::commands::create_project(
+            project_path.to_string_lossy().to_string(),
+            "Test".to_string(),
+        )
+        .await
+        .unwrap();
+
+        let mut config = GlobalConfig::default();
+        let mut conversation = Vec::new();
+        let mut expected_calls = Vec::new();
+
+        // Reuse one conversation while switching the request's CLI every round.
+        for (cli, name) in clis {
+            config.default_cli = if cli == CliType::Codex {
+                CliType::OpenCode
+            } else {
+                CliType::Codex
+            };
+            storage::save_config(&config).unwrap();
+            let original_config =
+                fs::read(storage::get_data_dir().unwrap().join("config.json")).unwrap();
+            conversation.push(ConversationMessage {
+                role: "user".to_string(),
+                content: format!("Continue with {name}"),
+            });
+            let response = crate::commands::ai_brainstorm_chat(
+                project.id.to_string(),
+                conversation.clone(),
+                Some(cli),
+            )
+            .await
+            .unwrap();
+            assert_eq!(response.question, format!("Question from {name}"));
+            conversation.push(ConversationMessage {
+                role: "assistant".to_string(),
+                content: response.question,
+            });
+
+            let title = crate::commands::generate_project_title_cmd(
+                project.id.to_string(),
+                "Build a game".to_string(),
+                Some(cli),
+            )
+            .await
+            .unwrap();
+            assert_eq!(title, format!("{name} title"));
+            assert_eq!(storage::load_project_state(&project.id).unwrap().name, title);
+            assert_eq!(storage::load_project_index().unwrap().projects[0].name, title);
+            expected_calls.extend([name, name]);
+            assert_eq!(
+                fs::read(storage::get_data_dir().unwrap().join("config.json")).unwrap(),
+                original_config,
+                "request overrides must not modify global config",
+            );
+        }
+
+        // Omitting an override continues to use each saved global default.
+        for (cli, name) in clis {
+            config.default_cli = cli;
+            storage::save_config(&config).unwrap();
+            let response = crate::commands::ai_brainstorm_chat(
+                project.id.to_string(),
+                conversation.clone(),
+                None,
+            )
+            .await
+            .unwrap();
+            assert_eq!(response.question, format!("Question from {name}"));
+            let title = crate::commands::generate_project_title_cmd(
+                project.id.to_string(),
+                "Build a game".to_string(),
+                None,
+            )
+            .await
+            .unwrap();
+            assert_eq!(title, format!("{name} title"));
+            expected_calls.extend([name, name]);
+        }
+        assert_eq!(
+            fs::read_to_string(project_path.join("cli-calls.log")).unwrap(),
+            format!("{}\n", expected_calls.join("\n")),
+        );
+
+        let completed = crate::commands::complete_ai_brainstorm(
+            project.id.to_string(),
+            "Build the game".to_string(),
+            CliType::Codex,
+            7,
+        )
+        .await
+        .unwrap();
+        assert_eq!(completed.status, ProjectStatus::Ready);
+        let saved = storage::load_project_state(&project.id).unwrap();
+        let task = saved.task.unwrap();
+        assert_eq!(task.cli, CliType::Codex);
+        assert_eq!(task.prompt, "Build the game");
+        assert_eq!(task.max_iterations, 7);
+        assert!(saved.brainstorm.unwrap().completed_at.is_some());
+        assert_eq!(storage::load_config().unwrap().default_cli, CliType::OpenCode);
     }
 
     // --- Unit tests for truncate_to_title ---
